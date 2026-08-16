@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>MOORE — Chapter One</title>
+<style>
+  :root{
+    --blue:#0a0f22; --blue2:#0c1330; --frame:#1a2450; --edge:#2b3a72;
+    --phos:#7ff0b0; --phos-dim:#3f9a6a; --gold:#ffcf5c; --blood:#a11a2a;
+    --term:"Courier New",Courier,"Lucida Console",monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#03050c;}
+  body{
+    min-height:100vh;min-height:100svh;display:flex;align-items:center;justify-content:center;
+    font-family:var(--term);color:var(--phos);padding:14px;
+    background:radial-gradient(120% 90% at 50% 0%,#0a1024,#03050c 70%);
+    user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;
+  }
+  .machine{width:100%;max-width:820px;display:flex;flex-direction:column;
+    border:2px solid var(--edge);border-radius:8px;overflow:hidden;
+    background:linear-gradient(180deg,#0c1330,#080c1e);
+    box-shadow:0 0 0 4px #05070f, 0 26px 60px -20px #000, inset 0 0 40px rgba(43,58,114,.25);}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:6px 10px;background:linear-gradient(180deg,#1a2450,#141c40);
+    border-bottom:2px solid var(--edge);font-size:12px;letter-spacing:.12em;color:#9fb3ff;}
+  .topbar .lamp{width:9px;height:9px;border-radius:50%;background:var(--gold);
+    box-shadow:0 0 8px var(--gold);display:inline-block;margin-right:6px;animation:flick 3s infinite}
+  @keyframes flick{0%,100%{opacity:1}47%{opacity:.6}49%{opacity:.9}}
+  .topbar .right{color:#6f83c0;letter-spacing:.18em}
+  .screen{position:relative;background:#05070f;}
+  canvas{display:block;width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges;}
+  .scan{position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:.35;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,0) 0,rgba(0,0,0,0) 2px,rgba(0,0,0,.5) 3px,rgba(0,0,0,0) 4px);}
+  .vig{position:absolute;inset:0;pointer-events:none;
+    box-shadow:inset 0 0 90px 20px rgba(0,0,0,.7);}
+  .console{background:#070b1c;border-top:2px solid var(--edge);padding:11px 14px 12px;
+    min-height:74px;font-size:15px;line-height:1.5;letter-spacing:.02em;}
+  .console .cap{color:var(--phos);text-shadow:0 0 6px rgba(127,240,176,.35);white-space:pre-wrap;}
+  .cur{display:inline-block;width:8px;height:15px;background:var(--phos);vertical-align:-2px;
+    margin-left:2px;animation:blink 1s step-start infinite;box-shadow:0 0 6px var(--phos)}
+  @keyframes blink{50%{opacity:0}}
+  .hud{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:7px 12px;background:#0a1024;border-top:1px solid #16204a;font-size:11px;color:#6f83c0;letter-spacing:.1em;}
+  .inv{display:flex;gap:8px;align-items:center}
+  .inv .slot{width:26px;height:26px;border:1px solid #263468;border-radius:4px;background:#0c1330;
+    display:flex;align-items:center;justify-content:center;image-rendering:pixelated;position:relative;opacity:.35;}
+  .inv .slot.have{opacity:1;border-color:#3b56a8}
+  .inv .slot canvas{width:22px;height:22px}
+  .inv .slot.lit{box-shadow:0 0 10px var(--gold);border-color:var(--gold)}
+  .hud button{font-family:var(--term);font-size:11px;color:#9fb3ff;background:#0c1330;
+    border:1px solid #263468;border-radius:4px;padding:5px 9px;cursor:pointer;letter-spacing:.12em}
+  .hud button:hover{border-color:#3b56a8;color:#cfe0ff}
+</style>
+</head>
+<body>
+<div class="machine">
+  <div class="topbar">
+    <span><span class="lamp"></span>MOORE.EXE</span>
+    <span class="right" id="chapter">CH. I — THE FOREST OF MOORE</span>
+  </div>
+  <div class="screen">
+    <canvas id="game" width="320" height="200"></canvas>
+    <div class="vig"></div>
+    <div class="scan"></div>
+  </div>
+  <div class="console"><span class="cap" id="cap"></span><span class="cur" id="cur"></span></div>
+  <div class="hud">
+    <div class="inv" id="inv">
+      <div class="slot" data-i="dagger" title="dagger"><canvas width="16" height="16"></canvas></div>
+      <div class="slot" data-i="candle" title="candle"><canvas width="16" height="16"></canvas></div>
+      <div class="slot" data-i="bread"  title="bread"><canvas width="16" height="16"></canvas></div>
+    </div>
+    <div id="hint">click to interact · M mutes</div>
+    <button id="mute">♪ SOUND</button>
+  </div>
+</div>
+<script>
+(function(){
+"use strict";
+const cv=document.getElementById("game"), g=cv.getContext("2d");
+g.imageSmoothingEnabled=false;
+const W=320,H=200;
+const capEl=document.getElementById("cap"), curEl=document.getElementById("cur"),
+      hintEl=document.getElementById("hint"), chapterEl=document.getElementById("chapter");
+
+// ---------- palette ----------
+const C={
+  ink:"#05070f", blue:"#0a0f22", night:"#080c1e",
+  ground:"#0e1410", ground2:"#141d16", mud:"#181a13",
+  trunk:"#3a2a1c", trunkD:"#241a12",
+  canopy:"#1c3324", canopyD:"#122318", canopyH:"#2c4d36",
+  stone:"#3a4560", stoneL:"#59668a", stoneD:"#222a44",
+  wall:"#20263f", wallD:"#141a30", floor:"#171d33", floor2:"#12172b",
+  skin:"#d2a074", skinD:"#a97e54", hair:"#22161a",
+  cloak:"#4a3b4e", cloakD:"#2f2634", cloakH:"#5f4d66",
+  blood:"#8f1626", bloodD:"#5c0f1a",
+  rain:"#7fa8d8", rainH:"#c3daf5",
+  gold:"#ffcf5c", goldD:"#c99a2e", flame:"#ffb347", flameD:"#f0842a",
+  phos:"#7ff0b0", shadow:"#04060c", bone:"#d8cdb0", iron:"#4a5570"
+};
+function px(x,y,w,h,col){ g.fillStyle=col; g.fillRect(x|0,y|0,w|0,h|0); }
+
+// ---------- offscreen dark layer for candlelight ----------
+const dark=document.createElement("canvas"); dark.width=W; dark.height=H;
+const dg=dark.getContext("2d");
+
+// ---------- audio ----------
+let ac=null, muted=false, rainNode=null, rainGain=null, hbTimer=0;
+const muteBtn=document.getElementById("mute");
+function actx(){ if(!ac){try{ac=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}} if(ac&&ac.state==="suspended")ac.resume(); return ac; }
+function tone(f0,f1,dur,when,type,vol){ if(muted||!actx())return; const t=ac.currentTime+(when||0);
+  const o=ac.createOscillator(),ga=ac.createGain(); o.type=type||"sine";
+  o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(Math.max(1,f1),t+dur);
+  ga.gain.setValueAtTime(0.0001,t); ga.gain.exponentialRampToValueAtTime(vol||0.15,t+0.02);
+  ga.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(ga).connect(ac.destination); o.start(t); o.stop(t+dur+0.05); }
+function noise(dur,when,freq,vol,type){ if(muted||!actx())return; const t=ac.currentTime+(when||0);
+  const n=Math.max(1,Math.floor(ac.sampleRate*dur)), b=ac.createBuffer(1,n,ac.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(Math.random()*2-1);
+  const s=ac.createBufferSource(); s.buffer=b; const f=ac.createBiquadFilter(); f.type=type||"lowpass"; f.frequency.value=freq||600;
+  const ga=ac.createGain(); ga.gain.setValueAtTime(vol||0.2,t); ga.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  s.connect(f).connect(ga).connect(ac.destination); s.start(t); s.stop(t+dur+0.02); }
+function sfxStep(){ noise(0.09,0,420,0.22,"lowpass"); tone(120,60,0.10,0,"sine",0.12); }        // glogk
+function sfxLight(){ noise(0.35,0,900,0.16,"bandpass"); tone(300,700,0.3,0.02,"sine",0.08); }
+function sfxDoor(){ noise(0.5,0,220,0.3,"lowpass"); tone(90,50,0.6,0,"sine",0.14); }
+function sfxSting(){ tone(180,70,0.9,0,"sawtooth",0.12); tone(184,74,0.9,0,"sawtooth",0.12); }
+function sfxChime(){ tone(660,990,0.18,0,"triangle",0.10); tone(990,1320,0.18,0.12,"triangle",0.09); }
+function sfxCut(){ noise(0.18,0,2600,0.3,"highpass"); }
+function heartbeat(){ tone(70,42,0.16,0,"sine",0.22); tone(66,40,0.16,0.20,"sine",0.16); }
+function rainStart(){ if(muted||!actx()||rainNode)return;
+  const n=ac.sampleRate*2, b=ac.createBuffer(1,n,ac.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*0.5;
+  rainNode=ac.createBufferSource(); rainNode.buffer=b; rainNode.loop=true;
+  const f=ac.createBiquadFilter(); f.type="bandpass"; f.frequency.value=1400; f.Q.value=0.6;
+  rainGain=ac.createGain(); rainGain.gain.value=0.06; rainNode.connect(f).connect(rainGain).connect(ac.destination); rainNode.start(); }
+function rainStop(){ if(rainNode){try{rainNode.stop()}catch(e){} rainNode=null;} }
+muteBtn.addEventListener("click",()=>{ actx(); muted=!muted; muteBtn.textContent=muted?"♪ MUTED":"♪ SOUND";
+  if(muted)rainStop(); else if(scene.mode==="forest")rainStart(); });
+
+// ---------- typewriter caption ----------
+let capFull="", capShown=0, capT=0, capSpeed=42, onCapDone=null;
+function caption(text,cb){ capFull=text; capShown=0; capT=0; onCapDone=cb||null; }
+function capDone(){ return capShown>=capFull.length; }
+function updateCap(dt){ if(capShown<capFull.length){ capT+=dt; while(capT>1/capSpeed && capShown<capFull.length){ capT-=1/capSpeed; capShown++; if(capFull[capShown-1]!==" ")tone(1400,1400,0.012,0,"square",0.015); } capEl.textContent=capFull.slice(0,capShown); if(capShown>=capFull.length&&onCapDone){const c=onCapDone;onCapDone=null;c();} } }
+
+// ---------- pixel sprites ----------
+function sprPlayer(x,y,dir,phase,ctx){
+  const c=ctx||g; const P=(a,b,w,h,col)=>{c.fillStyle=col;c.fillRect((x+a)|0,(y+b)|0,w,h);};
+  P(-6,6,12,4,C.shadow);                         // shadow
+  P(-5,-1,10,9,C.cloakD);                          // cloak base
+  P(-5,-1,10,3,C.cloak);
+  P(-4,1,8,5,C.cloak);
+  P(2,-1,3,7,C.cloakH);                            // side sheen
+  P(-2,3,3,2,C.blood); P(0,5,2,1,C.bloodD);        // blood on back
+  const fx=(phase%2===0)?-1:1;                     // feet alternate
+  P(-4,7+(-fx>0?0:0),3,2,C.trunkD); P(1,7,3,2,C.trunkD);
+  P(-4+ (fx<0?0:0),8,3,1,C.cloakD);
+  // head (from above): hair, small face toward dir
+  P(-4,-6,8,7,C.hair); P(-3,-7,6,2,C.hair);
+  P(-3,-2,6,2,C.skinD);
+  let hx=0,hy=0; if(dir==="left")hx=-2; else if(dir==="right")hx=2; else if(dir==="up")hy=-2; else hy=1;
+  P(-2+hx*0.5,-1+hy,4,2,C.skin);                   // face sliver
+  P(-3+hx,-4,2,1,C.hair);
+}
+function sprTree(x,y){
+  px(x-7,y+7,14,4,C.shadow);
+  px(x-1,y+2,3,7,C.trunkD); px(x-1,y+2,1,7,C.trunk);
+  const cs=[[-8,-8,10,10],[-2,-12,11,11],[2,-4,9,9],[-9,-2,8,8]];
+  for(const s of cs){ px(x+s[0],y+s[1],s[2],s[3],C.canopyD); }
+  const cs2=[[-6,-7,7,7],[0,-10,8,8],[3,-3,6,6]];
+  for(const s of cs2){ px(x+s[0],y+s[1],s[2],s[3],C.canopy); }
+  px(x-4,y-8,3,3,C.canopyH); px(x+2,y-9,2,2,C.canopyH); px(x+4,y-2,2,2,C.canopyH);
+}
+function sprChest(x,y,open){
+  px(x-8,y+6,16,4,C.shadow);
+  px(x-8,y-2,16,10,C.trunkD); px(x-8,y-2,16,3,C.trunk);
+  px(x-8,y+1,16,1,C.gold); // band
+  if(!open){ px(x-8,-3+y,16,4,C.trunk); px(x-1,y+1,2,3,C.gold); }
+  else { px(x-8,y-8,16,6,C.trunkD); px(x-8,y-8,16,2,C.trunk); px(x-7,y-1,14,2,"#20130b"); }
+}
+function sprDoor(x,y,glow){
+  px(x-6,y-14,12,20,C.wallD); px(x-6,y-14,12,20,C.trunkD);
+  px(x-5,y-13,10,18,C.trunk);
+  px(x-5,y-13,10,3,C.trunkD);
+  px(x+2,y-4,2,2,C.gold); // handle
+  if(glow){ px(x-6,y-15,12,1,C.goldD); }
+}
+function iconItem(kind,ctx,ox,oy,s){
+  const c=ctx, P=(a,b,w,h,col)=>{c.fillStyle=col;c.fillRect(ox+a*s,oy+b*s,w*s,h*s);};
+  if(kind==="dagger"){ P(7,2,2,8,"#c9d2e6"); P(7,2,1,8,"#eef2fb"); P(6,10,4,2,C.goldD); P(7,12,2,3,C.trunk); }
+  else if(kind==="candle"){ P(6,5,4,10,C.bone); P(6,5,2,10,"#efe6c8"); P(7,1,2,4,C.flame); P(7,0,2,2,C.gold); P(7,2,2,2,"#fff2c0"); }
+  else if(kind==="bread"){ P(4,6,8,6,"#b07a3a"); P(4,6,8,2,"#caa060"); P(5,8,1,1,"#5c3a16"); P(8,9,1,1,"#5c3a16"); P(10,7,1,1,"#5c3a16"); }
+}
+function sprCrow(x,y){ px(x-4,y+3,8,2,C.shadow); px(x-3,y-2,6,4,"#0b0d14"); px(x-4,y-1,2,2,"#0b0d14"); px(x-1,y-4,2,2,"#0b0d14"); px(x+1,y-1,2,1,C.goldD); }
+function sprStone(x,y){ px(x-7,y+6,14,4,C.shadow); px(x-6,y-12,12,18,C.stoneD); px(x-6,y-12,12,18,C.stone); px(x-6,y-12,4,18,C.stoneL); for(let i=0;i<4;i++){px(x-3,y-9+i*4,6,1,C.stoneD);} px(x-2,y-7,1,1,C.gold); px(x+1,y-3,1,1,C.gold); }
+function sprThorns(x,y,cut){ px(x-24,y+8,48,4,C.shadow);
+  for(let i=-22;i<=22;i+=6){ const h=14+((i*7)%9); px(x+i,y-h,3,h+8,C.canopyD); px(x+i,y-h,1,h+8,C.canopy); px(x+i-2,y-h+3,2,2,C.canopyH); }
+  if(cut){ px(x-8,y-16,16,22,C.night); } }
+function sprBoundary(x,y){ px(x-8,y+7,16,4,C.shadow); px(x-6,y-16,12,22,C.stoneD); px(x-6,y-16,12,22,C.stone); px(x-6,y-16,3,22,C.stoneL); px(x-4,y-12,8,1,C.bone); px(x-4,y-9,8,1,C.bone); px(x-2,y-6,4,1,C.gold); }
+
+// draw item icons into inventory slots
+document.querySelectorAll("#inv .slot").forEach(sl=>{ const c=sl.querySelector("canvas").getContext("2d"); c.imageSmoothingEnabled=false; iconItem(sl.dataset.i,c,0,0,1); });
+
+// ---------- rain ----------
+const rain=[]; for(let i=0;i<90;i++)rain.push({x:Math.random()*W,y:Math.random()*H,s:1.4+Math.random()*1.2,l:4+Math.random()*4});
+function drawRain(){ for(const r of rain){ r.x-=r.s*0.5; r.y+=r.s*2.4; if(r.y>H){r.y=-4;r.x=Math.random()*W;} if(r.x<0)r.x=W;
+  g.strokeStyle=(Math.random()<0.15)?C.rainH:C.rain; g.globalAlpha=0.5; g.beginPath(); g.moveTo(r.x,r.y); g.lineTo(r.x-r.l*0.4,r.y-r.l); g.stroke(); }
+  g.globalAlpha=1; }
+
+// ---------- world / scenes ----------
+let scene={mode:"boot"};
+const player={x:270,y:120,tx:270,ty:120,dir:"left",moving:false,phase:0,stepT:0};
+const inv={dagger:false,candle:false,candleLit:false,bread:false};
+let candleR=0, flick=0, fade=0, fadeDir=0, fadeCb=null, T=0;
+
+function setInv(){ document.querySelectorAll("#inv .slot").forEach(sl=>{ const k=sl.dataset.i;
+  sl.classList.toggle("have", !!inv[k]); if(k==="candle") sl.classList.toggle("lit", inv.candleLit); }); }
+
+// forest screens (west-bound). trees generated deterministically.
+let seed=1337; function rnd(){ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; }
+function mkTrees(n,avoid){ const t=[]; let guard=0;
+  while(t.length<n && guard++<400){ const x=20+rnd()*280, y=44+rnd()*120;
+    if(avoid && avoid(x,y)) continue;
+    if(t.some(o=>Math.hypot(o.x-x,o.y-y)<26)) continue; t.push({x,y}); } return t; }
+const FS=[
+ { name:"THE TREELINE",
+   enter:"The Forest of Moore. The rain does not stop here. It never has.",
+   trees:mkTrees(13,(x,y)=>y>150||(x<40)), westOpen:true,
+   obj:[{k:"crow",x:150,y:150,once:1,say:"The crow has no eyes. Something was hungry here. Recently."}] },
+ { name:"THE FORK",
+   enter:"Two ways. Both wrong, probably. The trees lean like they are listening.",
+   trees:mkTrees(15,(x,y)=>(x>120&&x<200&&y>60&&y<140)), westOpen:true,
+   obj:[{k:"stone",x:160,y:96,once:1,say:"Runes you should not be able to read. One is a name. Not yours. Hers."}] },
+ { name:"THE WATCHER",
+   enter:"The candle shivers. Do not stop walking. It is faster when you stop.",
+   trees:mkTrees(18,(x,y)=>y>150), westOpen:true, follower:1,
+   obj:[] },
+ { name:"THE THORN WALL",
+   enter:"A wall of thorn and old iron. The way west is closed. You have a dagger.",
+   trees:mkTrees(11,(x,y)=>x<80||y<70), westOpen:false,
+   obj:[{k:"thorns",x:44,y:110,once:1,cut:0,say:"You cut. Your hand knows this motion far too well.",unlock:1}] },
+ { name:"THE EDGE OF MOORE",
+   enter:"The last trees thin. Beyond them, the open moor drowns in rain.",
+   trees:mkTrees(8,(x,y)=>x<70), westOpen:false, end:1,
+   obj:[{k:"boundary",x:44,y:104,once:1,say:"The forest opens its fingers and lets you go. It did not have to. Why?",end:1}] }
+];
+let fi=0, follower=null, idleT=0;
+
+// ---------- input ----------
+function toLocal(e){ const r=cv.getBoundingClientRect(); const cx=(e.touches?e.touches[0].clientX:e.clientX);
+  const cy=(e.touches?e.touches[0].clientY:e.clientY); return {x:(cx-r.left)/r.width*W, y:(cy-r.top)/r.height*H}; }
+cv.addEventListener("pointerdown",e=>{ e.preventDefault(); actx(); const p=toLocal(e); handleClick(p.x,p.y); });
+addEventListener("keydown",e=>{ if(e.key==="m"||e.key==="M"){ muteBtn.click(); }
+  if(scene.mode==="boot"){ actx(); startSanctuary(); } });
+
+function walkTo(x,y,cb){ player.tx=Math.max(12,Math.min(W-12,x)); player.ty=Math.max(50,Math.min(H-14,y)); player.arriveCb=cb||null; }
+
+function handleClick(x,y){
+  if(scene.mode==="boot"){ startSanctuary(); return; }
+  if(fadeDir!==0) return;
+  if(!capDone()){ capShown=capFull.length; capEl.textContent=capFull; if(onCapDone){const c=onCapDone;onCapDone=null;c();} return; }
+
+  if(scene.mode==="san"){
+    if(scene.step===1){ // arrow → open chest
+      if(Math.hypot(x-160,y-70)<40){ openChest(); } return; }
+    if(scene.step===2){ // click candle icon floating above chest
+      const items=[{k:"dagger",x:130},{k:"candle",x:160},{k:"bread",x:190}];
+      for(const it of items){ if(Math.abs(x-it.x)<14 && Math.abs(y-70)<16){
+        if(it.k==="candle"){ lightCandle(); } else { caption("Not yet. Light the candle first — you cannot see."); } return; } }
+      return; }
+    if(scene.step===3){ // click door
+      if(Math.abs(x-40)<16 && Math.abs(y-104)<20){ leaveSanctuary(); }
+      else { walkTo(x,y); }
+      return; }
+  }
+
+  if(scene.mode==="forest"){
+    const sc=FS[fi];
+    // interactables
+    for(const o of sc.obj){ if(o.done) continue;
+      if(Math.hypot(x-o.x,y-o.y)<20){ walkTo(o.x+ (o.x<60?18: 0), o.y+12, ()=>doObj(o)); return; } }
+    // west exit
+    if(x<26){ if(sc.westOpen){ walkTo(8,y,()=>gotoWest()); } else { caption("The way west is blocked. Find another way through."); } return; }
+    walkTo(x,y);
+  }
+}
+
+// ---------- sanctuary flow ----------
+function startSanctuary(){ scene={mode:"san",step:0}; chapterEl.textContent="CH. I — THE SANCTUARY";
+  player.x=160;player.y=118;player.tx=160;player.ty=118;player.moving=false; candleR=0;
+  caption("You wake in a dark room. You do not know why. You do not know where.",()=>{
+    setTimeout(()=>caption("It is dark. Your heart is beating too fast.",()=>{
+      setTimeout(()=>{ scene.step=1; hintEl.textContent="click the golden arrow"; caption("Something glints in the black. A sign. It wants you to reach for it."); },700);
+    }),650); });
+}
+function openChest(){ sfxChime(); scene.step=2; hintEl.textContent="click the candle to light it";
+  caption("A box has opened. Inside: a dagger. a candle. and something to munch on."); }
+function lightCandle(){ sfxLight(); inv.candle=true; inv.candleLit=true; inv.dagger=true; inv.bread=true; setInv();
+  scene.step=3; hintEl.textContent="click the door to leave"; candleR=1;
+  caption("You light the candle. Weak gold spills out. You see the room. You see yourself — and the blood you are wearing.",()=>{
+    setTimeout(()=>caption("A door. To the west. Your legs already know it is the only way."),900); }); }
+function leaveSanctuary(){ sfxDoor(); doFade(()=>{ enterForest(0); }); }
+
+// ---------- forest flow ----------
+function enterForest(i){ fi=i; const sc=FS[i]; scene={mode:"forest"}; chapterEl.textContent="CH. I — "+sc.name;
+  hintEl.textContent="click to walk · click things to look";
+  player.x=W-16;player.y=116;player.tx=W-40;player.ty=116;player.dir="left";player.arriveCb=null;
+  follower = sc.follower ? {x:W+20,y:116} : null; idleT=0;
+  if(!muted) rainStart();
+  caption(sc.enter);
+  for(const o of sc.obj) o.done=false;
+}
+function gotoWest(){ if(fi>=FS.length-1) return; doFade(()=>enterForest(fi+1)); }
+function doObj(o){ if(o.done)return; o.done=true;
+  if(o.k==="thorns"){ o.cut=1; sfxCut(); if(o.unlock)FS[fi].westOpen=true; hintEl.textContent="the way west is open"; }
+  if(o.k==="crow"||o.k==="stone") sfxSting();
+  caption(o.say, o.end?()=>{ setTimeout(endChapter,1200); }:null);
+}
+function endChapter(){ scene={mode:"end"}; chapterEl.textContent="CH. I — COMPLETE"; rainStop();
+  caption("You step past the last tree. The Forest of Moore lets you go.\nEND OF CHAPTER ONE.");
+  hintEl.textContent="to be continued — the moor waits"; }
+
+// ---------- fade ----------
+function doFade(cb){ fadeDir=1; fadeCb=cb; }
+
+// ---------- update ----------
+function moveToward(dt){
+  const dx=player.tx-player.x, dy=player.ty-player.y, d=Math.hypot(dx,dy);
+  if(d>1.5){ player.moving=true; const sp=42*dt; const nx=player.x+dx/d*Math.min(sp,d), ny=player.y+dy/d*Math.min(sp,d);
+    // tree trunk collision (forest)
+    let ok=true; if(scene.mode==="forest"){ for(const t of FS[fi].trees){ if(Math.hypot(nx-t.x,ny-(t.y+4))<7){ ok=false; break; } } }
+    if(ok){ player.x=nx; player.y=ny; } else { player.tx=player.x; player.ty=player.y; }
+    player.dir=Math.abs(dx)>Math.abs(dy)?(dx<0?"left":"right"):(dy<0?"up":"down");
+    player.stepT+=dt; if(player.stepT>0.26){ player.stepT=0; player.phase^=1; sfxStep(); }
+  } else { player.moving=false;
+    if(player.arriveCb){ const cb=player.arriveCb; player.arriveCb=null; cb(); } }
+}
+function update(dt){
+  T+=dt; flick=0.85+Math.sin(T*11)*0.06+Math.sin(T*23)*0.04+ (Math.random()*0.04);
+  updateCap(dt);
+  if(scene.mode==="san"){
+    if(candleR<1 && inv.candleLit){ /* stays */ }
+    if(!inv.candleLit){ hbTimer+=dt; if(hbTimer>1.1){ hbTimer=0; heartbeat(); } }
+    if(scene.step===3) moveToward(dt);
+    candleR = inv.candleLit ? Math.min(72, (candleR<1?0:candleR)+ (candleR<72?90*dt:0)) : 0;
+    if(inv.candleLit && candleR<1) candleR=1;
+  } else if(scene.mode==="forest"){
+    moveToward(dt); candleR=Math.min(56,candleR+120*dt);
+    if(follower){ const dx=player.x-follower.x, dy=player.y-follower.y, d=Math.hypot(dx,dy);
+      const speed = player.moving? 30 : 46; // creeps when you stop
+      follower.x+=dx/d*speed*dt; follower.y+=dy/d*speed*dt;
+      if(!player.moving){ idleT+=dt; if(idleT>1.4){ idleT=0; sfxSting(); caption("Do not stop."); } } else idleT=0;
+      if(d<16){ sfxSting(); follower.x=W+30; follower.y=player.y; caption("Something breathes on your neck. You run. It lets you."); }
+    }
+  } else if(scene.mode==="end"){ candleR=Math.min(56,candleR+40*dt); }
+  if(fadeDir!==0){ fade+=fadeDir*dt*1.7; if(fade>=1){ fade=1; if(fadeCb){const c=fadeCb;fadeCb=null;c();} fadeDir=-1; } else if(fade<=0){ fade=0; fadeDir=0; } }
+}
+
+// ---------- render ----------
+function drawSanctuaryScene(){
+  // stone room floor
+  px(0,0,W,H,C.ink);
+  for(let y=64;y<176;y+=16)for(let x=40;x<280;x+=16){ px(x,y,15,15,(x/16+y/16)%2?C.floor:C.floor2); }
+  px(36,60,248,4,C.wallD); px(36,172,248,5,C.wallD); px(36,60,4,118,C.wallD); px(280,60,4,118,C.wallD);
+  px(36,60,248,2,C.wall); px(280,60,4,2,C.wall);
+  sprDoor(40,104,true);
+  sprChest(160,120, inv.candleLit || scene.step>=2 );
+  if(inv.candleLit || scene.step===3) sprPlayer(player.x,player.y,player.dir,player.phase);
+}
+function drawArrow(){ const by=Math.sin(T*4)*4; g.save();
+  // glow
+  g.globalCompositeOperation="lighter";
+  const gr=g.createRadialGradient(160,64+by,0,160,64+by,26); gr.addColorStop(0,"rgba(255,207,92,.5)"); gr.addColorStop(1,"rgba(255,207,92,0)");
+  g.fillStyle=gr; g.fillRect(130,34+by,60,60); g.globalCompositeOperation="source-over";
+  g.fillStyle=C.gold; g.beginPath(); g.moveTo(160,78+by); g.lineTo(150,64+by); g.lineTo(156,64+by); g.lineTo(156,52+by); g.lineTo(164,52+by); g.lineTo(164,64+by); g.lineTo(170,64+by); g.closePath(); g.fill();
+  g.fillStyle=C.goldD; g.fillRect(156,52+by,2,12); g.restore(); }
+
+function drawItems(){
+  const items=[{k:"dagger",x:130},{k:"candle",x:160},{k:"bread",x:190}];
+  const by=Math.sin(T*3)*2;
+  for(const it of items){ const iy=64+by, s=1.5;
+    g.save(); g.globalCompositeOperation="lighter";
+    const base=it.k==="candle"?"rgba(255,200,90,":"rgba(150,170,210,";
+    const gr=g.createRadialGradient(it.x,iy,0,it.x,iy,17);
+    gr.addColorStop(0,base+(it.k==="candle"?0.55:0.3)+")"); gr.addColorStop(1,base+"0)");
+    g.fillStyle=gr; g.fillRect(it.x-18,iy-18,36,36); g.restore();
+    iconItem(it.k,g,it.x-8*s,iy-8*s,s);
+    if(it.k==="candle"){ g.strokeStyle="rgba(255,207,92,"+(0.4+Math.sin(T*5)*0.3)+")"; g.lineWidth=1; g.strokeRect(it.x-11,iy-13,22,27); }
+  }
+}
+function drawForestScene(){
+  const sc=FS[fi];
+  px(0,0,W,H,C.ground);
+  // ground texture
+  seed=fi*97+13; for(let i=0;i<70;i++){ const x=rnd()*W,y=44+rnd()*150; px(x,y, rnd()<0.5?1:2, 1, rnd()<0.5?C.ground2:C.mud); }
+  // objects behind trees
+  for(const o of sc.obj){ if(o.k==="stone")sprStone(o.x,o.y); if(o.k==="crow")sprCrow(o.x,o.y);
+    if(o.k==="thorns")sprThorns(o.x,o.y,o.cut); if(o.k==="boundary")sprBoundary(o.x,o.y); }
+  // trees + player depth-sorted by y
+  const ents=sc.trees.map(t=>({y:t.y,d:()=>sprTree(t.x,t.y)}));
+  if(follower) ents.push({y:follower.y,d:()=>{ px(follower.x-5,follower.y-8,10,14,C.shadow); px(follower.x-4,follower.y-11,8,4,"#0a0c14"); px(follower.x-2,follower.y-12,4,3,"#0a0c14"); }});
+  ents.push({y:player.y,d:()=>sprPlayer(player.x,player.y,player.dir,player.phase)});
+  ents.sort((a,b)=>a.y-b.y); for(const e of ents)e.d();
+  drawRain();
+  // west-exit hint glimmer
+  if(sc.westOpen){ const a=0.3+Math.sin(T*3)*0.2; g.globalAlpha=a; px(2,110,3,16,C.phos); g.globalAlpha=1; }
+}
+
+function applyDark(baseAlpha){
+  dg.clearRect(0,0,W,H);
+  dg.fillStyle="rgba(4,6,14,"+baseAlpha+")"; dg.fillRect(0,0,W,H);
+  dg.globalCompositeOperation="destination-out";
+  const cut=(cx,cy,r)=>{ const gr=dg.createRadialGradient(cx,cy,0,cx,cy,r); gr.addColorStop(0,"rgba(0,0,0,1)"); gr.addColorStop(0.6,"rgba(0,0,0,0.85)"); gr.addColorStop(1,"rgba(0,0,0,0)"); dg.fillStyle=gr; dg.fillRect(cx-r,cy-r,r*2,r*2); };
+  if(candleR>1) cut(player.x,player.y, candleR*flick);
+  if(scene.mode==="san" && scene.step>=1 && !inv.candleLit) cut(160,64,26); // arrow glow
+  dg.globalCompositeOperation="source-over";
+  g.drawImage(dark,0,0);
+  // warm additive glow from candle
+  if(candleR>1){ g.save(); g.globalCompositeOperation="lighter";
+    const r=candleR*flick*0.9; const gr=g.createRadialGradient(player.x,player.y-2,0,player.x,player.y-2,r);
+    gr.addColorStop(0,"rgba(255,180,80,.28)"); gr.addColorStop(0.5,"rgba(240,130,40,.10)"); gr.addColorStop(1,"rgba(0,0,0,0)");
+    g.fillStyle=gr; g.fillRect(player.x-r,player.y-2-r,r*2,r*2); g.restore(); }
+}
+
+function drawBoot(){
+  px(0,0,W,H,C.night);
+  g.fillStyle=C.phos; g.font="8px 'Courier New',monospace"; g.textBaseline="top";
+  const lines=["MOORE  //  a game in one sitting","","> loading dream.exe .............. ok","> memory ....................... corrupt","> you ......................... asleep","",""];
+  for(let i=0;i<lines.length;i++) g.fillText(lines[i],14,30+i*12);
+  const blink=Math.floor(T*2)%2===0;
+  g.fillStyle=C.gold; if(blink) g.fillText("▸ CLICK / PRESS ANY KEY TO WAKE",14,30+7*12);
+  // faint scan already via CSS
+}
+
+function render(){
+  if(scene.mode==="boot"){ drawBoot(); }
+  else if(scene.mode==="san"){ drawSanctuaryScene(); applyDark(inv.candleLit?0.86:0.985); if(scene.step===1&&!inv.candleLit) drawArrow(); if(scene.step===2&&!inv.candleLit) drawItems(); }
+  else if(scene.mode==="forest"){ drawForestScene(); applyDark(0.82); }
+  else if(scene.mode==="end"){ drawForestScene(); applyDark(0.7);
+    g.fillStyle="rgba(5,7,15,.55)"; g.fillRect(0,0,W,H); g.fillStyle=C.gold; g.font="10px 'Courier New',monospace"; g.textAlign="center"; g.fillText("CHAPTER ONE",W/2,86); g.fillText("COMPLETE",W/2,100); g.textAlign="left"; }
+  if(fade>0){ g.fillStyle="rgba(3,5,12,"+fade+")"; g.fillRect(0,0,W,H); }
+}
+
+// ---------- loop ----------
+let last=0;
+function frame(ts){ const dt=Math.min(0.05,(ts-last)/1000)||0; last=ts; update(dt); render(); requestAnimationFrame(frame); }
+caption("");
+setInv();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
