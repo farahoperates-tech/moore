@@ -250,10 +250,11 @@ const R=[
  {b:"autumn",name:"ASIA · THE TAIGA HEART", exits:{n:1,e:2,s:3,w:4},
   enter:"You wake standing, grown, wearing blood that is not yours. Taiga in every direction. Something in you says: move.",
   trees:seededTrees(9,11,BIOME.autumn,clearEdges), bush:[{x:120,y:150,ber:1},{x:210,y:70,ber:1},{x:80,y:90,ber:1}], fires:[],
+  corpse:{x:252,y:150}, coat:{x:252,y:138},
   wild:[{t:"deer",x:180,y:120},{t:"raven",x:90,y:60}], enemies:[] },
  {b:"frost",name:"ASIA · THE BIRCH ROAD", exits:{s:0,e:5,n:9},
   enter:"Birches like white bones. The road bends north — and the cold begins to have opinions.",
-  trees:seededTrees(11,22,BIOME.frost,clearEdges), bush:[{x:150,y:150,ber:1}], fires:[{x:70,y:130,lit:0}],
+  trees:seededTrees(11,22,BIOME.frost,clearEdges), bush:[{x:150,y:150,ber:1}], fires:[{x:70,y:130,lit:0}], axe:{x:120,y:80},
   wild:[{t:"raven",x:200,y:70}], enemies:[{t:"wolf",x:230,y:90}] },
  {b:"frost",name:"ASIA · THE DEAD HIGHWAY", exits:{w:0,e:6,n:5},
   enter:"A road of the old world, drowned and risen. Iron carcasses rust in rows. They went somewhere, once, fast.",
@@ -312,9 +313,11 @@ function click(x,y){
   const rm=R[ri];
   // strike nearest enemy in melee range
   let near=null,nd=99; for(const en of enemies){ if(en.dead)continue; const d=Math.hypot(x-en.x,y-en.y); if(d<nd){nd=d;near=en;} }
-  if(near && nd<20 && Math.hypot(player.x-near.x,player.y-near.y)<26){ attack(); return; }
-  // ranged: bow at a farther enemy
-  if(near && nd<24 && inv.bow && inv.arrows>0 && Math.hypot(player.x-near.x,player.y-near.y)>=26){ shoot(near.x,near.y); return; }
+  if(near && nd<20){ const pd=Math.hypot(player.x-near.x,player.y-near.y);
+    if(pd<26){ attack(); }                                   // adjacent → swing
+    else if(inv.bow && inv.arrows>0){ shoot(near.x,near.y); } // far + bow → loose an arrow
+    else { walkTo(near.x+(player.x<near.x?-16:16), near.y, ()=>{ if(!near.dead && Math.hypot(player.x-near.x,player.y-near.y)<28) attack(); }); } // walk up and swing
+    return; }
   // interact: fires, pickups, slabs, dweller, shrine
   if(rm.fires) for(const f of rm.fires){ if(!f.lit && Math.hypot(x-f.x,y-f.y)<16){ walkTo(f.x,f.y+10,()=>lightFire(f)); return; } }
   if(rm.coat && !rm.coat.got && Math.hypot(x-rm.coat.x,y-rm.coat.y)<16){ walkTo(rm.coat.x,rm.coat.y+10,()=>{rm.coat.got=1;inv.coat=true;setInv();caption("You take the coat. The cold loses some teeth.");}); return; }
@@ -360,7 +363,7 @@ function sanClick(x,y){
   if(scene.step===2){ const items=[{k:"knife",x:130},{k:"candle",x:160},{k:"bread",x:190}]; for(const it of items){ if(Math.abs(x-it.x)<14&&Math.abs(y-70)<16){ if(it.k==="candle")lightCandle(); else caption("Not yet. Light the candle first — you cannot see."); return; } } return; }
   if(scene.step===3){ if(Math.abs(x-40)<16&&Math.abs(y-104)<20){ sfxLight(); doFade(()=>gotoRoom(0,"s")); } else walkTo(x,y); return; }
 }
-function lightCandle(){ sfxLight(); inv.candle=true; inv.candleLit=true; inv.knife=true; weapon={name:"knife",dur:8,max:8,dmg:1,range:24}; setInv(); scene.step=3; hintEl.textContent="click the door"; candleR=1;
+function lightCandle(){ sfxLight(); inv.candle=true; inv.candleLit=true; inv.knife=true; weapon={name:"knife",dur:10,max:10,dmg:1,range:24}; setInv(); scene.step=3; hintEl.textContent="click the door"; candleR=1;
   caption("You light the candle — your soul-light, a splinter of the moon. You see the room. You see yourself, and the blood you wear.",{cb:()=>{ setTimeout(()=>caption("A door. West. Your legs already know it is the only way."),800); }}); }
 
 // ---------- rooms ----------
@@ -376,7 +379,7 @@ function gotoRoom(i,from){ ri=i; const rm=R[i]; scene={mode:"play"}; placeEl.tex
   candleR=Math.max(candleR,1);
   visited.add(i); checkGate();
   caption(rm.enter, rm.scent?{cb:()=>{ setTimeout(()=>caption("You can smell it now. A soul, ancient, close.",{voice:knowledge}),1400); }}:null);
-  if(i===0 && visited.size<=1){ setTimeout(()=>caption("Top-right: your WARMTH (the flame) and FOOD (the meat). Let either empty and you die. Fires warm you; berries and bread feed you."),4200); }
+  if(i===0 && visited.size<=1){ setTimeout(()=>caption("Top-right: WARMTH (flame) and FOOD (meat) — keep both up. Tap a beast to fight it; tap the ground to walk. And grab that glowing coat before the cold deepens."),4200); }
 }
 function checkGate(){ if(gateOpen) return; if(EXPLORABLE.every(r=>visited.has(r))){ openGate(); } }
 function openGate(){ gateOpen=true; windNorth=true; gateStage=1; setWind(0.2);
@@ -447,7 +450,7 @@ function update(dt){
     if(gone)arrows.splice(i,1); }
   // wildlife (silent; flee; drift north after gate)
   for(const w of wildlife){ w.ph+=dt*3; const d=Math.hypot(player.x-w.x,player.y-w.y);
-    if(d<34){ w.flee=0.8; const a=Math.atan2(w.y-player.y,w.x-player.x); w.x+=Math.cos(a)*40*dt; w.y+=Math.sin(a)*40*dt; }
+    if(d<15){ w.flee=0.5; const a=Math.atan2(w.y-player.y,w.x-player.x); w.x+=Math.cos(a)*16*dt; w.y+=Math.sin(a)*16*dt; }
     else if(windNorth){ w.y-=14*dt; w.x+=Math.sin(w.ph)*4*dt; if(w.y<44){w.y=H-20;w.x=20+Math.random()*280;} }
     else { w.x+=Math.sin(w.ph*0.4)*8*dt; w.flee=Math.max(0,w.flee-dt); }
     w.x=Math.max(8,Math.min(W-8,w.x)); w.y=Math.max(44,Math.min(H-10,w.y)); }
