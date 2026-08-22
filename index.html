@@ -66,7 +66,7 @@
       <div class="slot" data-i="knife" title="knife"><canvas width="16" height="16"></canvas><span class="dur" id="dur"></span></div>
       <div class="slot" data-i="candle" title="candle"><canvas width="16" height="16"></canvas></div>
       <div class="slot" data-i="coat" title="coat"><canvas width="16" height="16"></canvas></div>
-      <div class="slot" data-i="bread" title="bread"><canvas width="16" height="16"></canvas></div>
+      <div class="slot" data-i="bread" title="bread"><canvas width="16" height="16"></canvas><span class="dur" id="breadn"></span></div>
     </div>
     <div id="hint">click to wake</div>
     <button id="mute">♪ SOUND</button>
@@ -79,7 +79,7 @@ const cv=document.getElementById("game"), g=cv.getContext("2d");
 g.imageSmoothingEnabled=false;
 const W=320,H=200;
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
-      placeEl=document.getElementById("place"), durEl=document.getElementById("dur");
+      placeEl=document.getElementById("place"), durEl=document.getElementById("dur"), breadnEl=document.getElementById("breadn");
 
 // ---------- palette ----------
 const C={ ink:"#05070f", night:"#080c1e",
@@ -128,6 +128,7 @@ function sfxHitEnemy(){ noise(0.08,0,500,0.2,"lowpass"); tone(220,120,0.08,0,"sq
 function sfxHurt(){ tone(200,70,0.35,0,"sawtooth",0.2); }
 function sfxWolf(){ tone(300,160,0.4,0,"sawtooth",0.12); tone(240,120,0.5,0.1,"sawtooth",0.1); }
 function sfxChime(){ tone(560,840,0.2,0,"triangle",0.1); tone(840,1200,0.25,0.14,"triangle",0.09); tone(1200,1600,0.3,0.3,"triangle",0.08); }
+function sfxAlert(t){ tone(760,1200,0.1,0,"square",0.13); if(t==="wolf")setTimeout(()=>sfxWolf(),110); }
 function sfxBreak(){ noise(0.2,0,3000,0.25,"highpass"); tone(400,120,0.15,0,"square",0.1); }
 function heartbeat(){ tone(70,42,0.16,0,"sine",0.2); tone(66,40,0.16,0.2,"sine",0.15); }
 function windStart(){ if(muted||!actx()||windNode)return;
@@ -218,7 +219,14 @@ function icon(kind,c,ox,oy,s){ const P=(a,b,w,h,col)=>{c.fillStyle=col;c.fillRec
   else if(kind==="candle"){P(6,5,4,10,C.bone);P(6,5,2,10,"#efe6c8");P(7,1,2,4,C.flame);P(7,0,2,2,C.gold);}
   else if(kind==="coat"){P(4,4,8,10,C.coat);P(4,4,8,3,C.coatH);P(7,5,2,9,"#3a251a");}
   else if(kind==="bread"){P(4,6,8,6,"#b07a3a");P(4,6,8,2,"#caa060");P(5,8,1,1,"#5c3a16");P(9,9,1,1,"#5c3a16");} }
-document.querySelectorAll("#inv .slot").forEach(sl=>{ const c=sl.querySelector("canvas").getContext("2d"); c.imageSmoothingEnabled=false; icon(sl.dataset.i,c,0,0,1); });
+document.querySelectorAll("#inv .slot").forEach(sl=>{ const c=sl.querySelector("canvas").getContext("2d"); c.imageSmoothingEnabled=false; icon(sl.dataset.i,c,0,0,1);
+  sl.addEventListener("pointerdown",e=>{ e.preventDefault(); actx(); useItem(sl.dataset.i); }); });
+function useItem(k){
+  if(k==="bread"){ if(inv.bread>0){ inv.bread--; player.hunger=Math.min(100,player.hunger+45); setInv(); sfxStep(); caption("You eat a piece of bread. Stale, but your hands steady."); } else caption("No bread left."); }
+  else if(k==="knife"){ caption(weapon?("Your "+weapon.name+" has "+weapon.dur+" good strikes left."):"Your blade is gone. Find another — or run."); }
+  else if(k==="candle"){ caption(inv.candleLit?"The candle burns low but true. It is the last of the light.":"Unlit."); }
+  else if(k==="coat"){ caption(inv.coat?"The coat is on your back. The cold is slower now.":"You have no coat yet. Look for one on the dead."); }
+}
 
 // ---------- precip ----------
 const drops=[]; for(let i=0;i<120;i++)drops.push({x:Math.random()*W,y:Math.random()*H,s:1+Math.random()*1.4,ph:Math.random()*6});
@@ -293,7 +301,7 @@ function click(x,y){
   if(R.fires) for(const f of R.fires){ if(!f.lit && Math.hypot(x-f.x,y-f.y)<16){ walkTo(f.x,f.y+10,()=>lightFire(f)); return; } }
   // pickups
   if(R.coat && !R.coat.got && Math.hypot(x-R.coat.x,y-R.coat.y)<16){ walkTo(R.coat.x,R.coat.y+10,()=>{R.coat.got=1;inv.coat=true;setInv();caption("You take the coat. The cold loses some of its teeth.");}); return; }
-  if(R.axe && !R.axe.got && Math.hypot(x-R.axe.x,y-R.axe.y)<16){ walkTo(R.axe.x,R.axe.y+10,()=>{R.axe.got=1;inv.axe=true;weapon={name:"axe",dur:18,max:18,dmg:2,range:26};setInv();caption("An axe. Heavier. It will last.");}); return; }
+  if(R.axe && !R.axe.got && Math.hypot(x-R.axe.x,y-R.axe.y)<16){ walkTo(R.axe.x,R.axe.y+10,()=>{R.axe.got=1;inv.axe=true;weapon={name:"axe",dur:16,max:16,dmg:2,range:26};setInv();caption("An axe. Heavier. It will last.");}); return; }
   if(R.bush) for(const bs of R.bush){ if(bs.ber && Math.hypot(x-bs.x,y-bs.y)<16){ walkTo(bs.x,bs.y+10,()=>{bs.ber=0;player.hunger=Math.min(100,player.hunger+18);caption("Bitter berries. Something, at least.");}); return; } }
   if(R.shrine && Math.hypot(x-R.shrine.x,y-R.shrine.y)<22){ walkTo(R.shrine.x+18,R.shrine.y+8,()=>takeKnowledge()); return; }
   // west exit
@@ -303,12 +311,13 @@ function click(x,y){
 }
 function attack(){
   if(scene.mode!=="play"||!weapon||player.atkCd>0) return;
-  player.atkCd=0.34; player.attackT=0.18; weapon.dur--; sfxSwing();
+  player.atkCd=0.34; player.attackT=0.18; sfxSwing();
   const dx={left:-1,right:1,up:0,down:0}[player.dir]||0, dy={up:-1,down:1,left:0,right:0}[player.dir]||0;
   const hx=player.x+dx*14, hy=player.y+dy*14;
-  for(const en of enemies){ if(en.dead)continue; if(Math.hypot(hx-en.x,hy-en.y)<weapon.range){ en.hp-=weapon.dmg||1; en.hurt=0.2; sfxHitEnemy();
+  let hitAny=false;
+  for(const en of enemies){ if(en.dead)continue; if(Math.hypot(hx-en.x,hy-en.y)<weapon.range){ hitAny=true; en.hp-=weapon.dmg||1; en.hurt=0.2; sfxHitEnemy();
     en.x+=dx*6; en.y+=dy*6; burst(en.x,en.y,C.blood,5); if(en.hp<=0){ en.dead=1; if(en.t==="ranger"){caption("The guardian folds into light. The pass is open.");} } } }
-  if(weapon.dur<=0){ sfxBreak(); caption(weapon.name==="knife"?"Your knife shatters. Find another blade — or run.":"The axe splinters."); weapon=null; setInv(); }
+  if(hitAny){ weapon.dur--; if(weapon.dur<=0){ sfxBreak(); caption(weapon.name==="knife"?"Your knife shatters. Find another blade — or run. There is an axe in a stump, further in.":"The axe splinters."); weapon=null; } }
   setInv();
 }
 function lightFire(f){ if(!inv.candleLit){caption("Nothing to light it with.");return;} f.lit=1; sfxLight(); caption("The fire catches. Warmth. The first kind thing in hours."); }
@@ -327,7 +336,7 @@ function sanClick(x,y){
     for(const it of items){ if(Math.abs(x-it.x)<14&&Math.abs(y-70)<16){ if(it.k==="candle") lightCandle(); else caption("Not yet. Light the candle first — you cannot see."); return; } } return; }
   if(scene.step===3){ if(Math.abs(x-40)<16&&Math.abs(y-104)<20){ sfxLight(); doFade(()=>gotoRoom(0)); } else walkTo(x,y); return; }
 }
-function lightCandle(){ sfxLight(); inv.candle=true; inv.candleLit=true; inv.knife=true; weapon={name:"knife",dur:10,max:10,dmg:1,range:24};
+function lightCandle(){ sfxLight(); inv.candle=true; inv.candleLit=true; inv.knife=true; weapon={name:"knife",dur:8,max:8,dmg:1,range:24};
   setInv(); scene.step=3; hintEl.textContent="click the door"; candleR=1;
   caption("You light the candle. You see the room. You see yourself — and the blood you are wearing.",{cb:()=>{ setTimeout(()=>caption("A door. West. Your legs know it is the only way."),800); }}); }
 
@@ -342,7 +351,7 @@ function gotoRoom(i){ ri=i; const R=ROOMS[i]; scene={mode:"play"}; placeEl.textC
 }
 function mkEnemy(e){ const base={x:e.x,y:e.y,t:e.t,dir:"left",phase:Math.random()*6,hurt:0,cd:0,dead:false};
   if(e.t==="wolf")   Object.assign(base,{hp:2,spd:40,aggro:92,atk:16});
-  if(e.t==="human")  Object.assign(base,{hp:3,spd:20,aggro:70,atk:14});
+  if(e.t==="human")  Object.assign(base,{hp:3,spd:17,aggro:58,atk:14});
   if(e.t==="ranger") Object.assign(base,{hp:6,spd:26,aggro:150,atk:18,boss:1});
   return base; }
 
@@ -398,8 +407,9 @@ function update(dt){
 
   // enemies
   for(const en of enemies){ if(en.dead)continue; en.phase+=dt*4; en.hurt=Math.max(0,en.hurt-dt); en.cd=Math.max(0,en.cd-dt);
-    const dx=player.x-en.x,dy=player.y-en.y,d=Math.hypot(dx,dy); en.dir=dx<0?"left":"right";
-    if(d<en.aggro){ const sp=en.spd*dt; en.x+=dx/d*sp; en.y+=dy/d*sp;
+    const dx=player.x-en.x,dy=player.y-en.y,d=Math.hypot(dx,dy)||0.01; en.dir=dx<0?"left":"right";
+    const see=d<en.aggro; if(see&&!en.aggroOn) sfxAlert(en.t); en.aggroOn=see;
+    if(see){ const sp=en.spd*dt; en.x+=dx/d*sp; en.y+=dy/d*sp;
       if(d<en.atk && en.cd<=0 && player.inv<=0){ en.cd=1.0; player.hp--; player.inv=1.1; sfxHurt(); if(en.t==="wolf")sfxWolf();
         burst(player.x,player.y,C.blood,6); if(player.hp<=0) die("They were faster. The snow drinks what is left."); }
     } else { en.x+=Math.sin(en.phase*0.5)*6*dt; }
@@ -445,8 +455,19 @@ function drawScene(){
   // west exit glimmer
   if((ri<ROOMS.length-1) && !(R.gate&&enemies.some(e=>!e.dead))){ g.globalAlpha=0.3+Math.sin(T*3)*0.2; px(2,106,3,16,C.phos); g.globalAlpha=1; }
 }
-function sprCoat(x,y){ px(x-5,y+3,10,3,C.shadow); px(x-4,y-6,8,10,C.coat); px(x-4,y-6,8,3,C.coatH); px(x-1,y-5,2,9,"#3a251a");
-  g.globalAlpha=0.5+Math.sin(T*3)*0.3; px(x-6,y-8,12,1,C.gold); g.globalAlpha=1; }
+function sprCoat(x,y){ px(x-5,y+3,10,3,C.shadow); px(x-4,y-6,8,10,C.coat); px(x-4,y-6,8,3,C.coatH); px(x-1,y-5,2,9,"#3a251a"); }
+function drawBeacons(){ const R=ROOMS[ri], by=Math.sin(T*4)*2;
+  const spark=(x,y)=>{ g.save(); g.globalCompositeOperation="lighter";
+    const gr=g.createRadialGradient(x,y-13+by,0,x,y-13+by,10); gr.addColorStop(0,"rgba(255,207,92,.55)"); gr.addColorStop(1,"rgba(255,207,92,0)");
+    g.fillStyle=gr; g.fillRect(x-10,y-23+by,20,20); g.fillStyle=C.gold; g.fillRect(x-1,y-16+by,2,6); g.fillRect(x-3,y-13+by,6,2); g.restore(); };
+  if(R.axe&&!R.axe.got) spark(R.axe.x,R.axe.y);
+  if(R.coat&&!R.coat.got) spark(R.coat.x,R.coat.y);
+}
+function drawAlerts(){ for(const en of enemies){ if(en.dead||!en.aggroOn)continue; const x=en.x,y=en.y-18,by=Math.sin(T*9)*1.5;
+  g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(x,y+by,0,x,y+by,11); gr.addColorStop(0,"rgba(255,207,92,.85)"); gr.addColorStop(1,"rgba(255,207,92,0)");
+  g.fillStyle=gr; g.fillRect(x-11,y-11+by,22,22); g.restore();
+  g.fillStyle=C.gold; g.fillRect(x-1,y-7+by,2,7); g.fillRect(x-1,y+2+by,2,2); }
+}
 function drawItems(){ const items=[{k:"knife",x:130},{k:"candle",x:160},{k:"bread",x:190}], by=Math.sin(T*3)*2;
   for(const it of items){ const iy=64+by,s=1.5; g.save(); g.globalCompositeOperation="lighter";
     const base=it.k==="candle"?"rgba(255,200,90,":"rgba(150,170,210,"; const gr=g.createRadialGradient(it.x,iy,0,it.x,iy,17);
@@ -493,7 +514,7 @@ function render(){
     for(let i=0;i<L.length;i++)g.fillText(L[i],14,34+i*12);
     if(Math.floor(T*2)%2===0){g.fillStyle=C.gold;g.fillText("> CLICK / ANY KEY TO WAKE",14,34+6*12);} return; }
   if(scene.mode==="san"){ drawSan(); applyDark(inv.candleLit?0.86:0.985); if(scene.step===1&&!inv.candleLit)drawArrow(); if(scene.step===2&&!inv.candleLit)drawItems(); }
-  else if(scene.mode==="play"){ drawScene(); applyDark(BIOME[ROOMS[ri].b].cold>7?0.86:0.78); drawFrost(); drawHUD(); }
+  else if(scene.mode==="play"){ drawScene(); applyDark(BIOME[ROOMS[ri].b].cold>7?0.86:0.78); drawFrost(); drawBeacons(); drawAlerts(); drawHUD(); }
   else if(scene.mode==="end"){ drawScene(); applyDark(0.5); drawHUD();
     g.fillStyle="rgba(5,10,7,.5)"; g.fillRect(0,0,W,H); g.textAlign="center"; g.fillStyle=C.gold; g.font="10px 'Courier New',monospace";
     g.fillText("KNOWLEDGE",W/2,84); g.fillStyle=C.spirit; g.font="7px 'Courier New',monospace"; g.fillText("the world boots up",W/2,98); g.textAlign="left"; }
@@ -509,7 +530,7 @@ function drawArrow(){ const by=Math.sin(T*4)*4; g.save(); g.globalCompositeOpera
 function setInv(){ document.querySelectorAll("#inv .slot").forEach(sl=>{ const k=sl.dataset.i;
   const have = k==="knife"?(inv.knife||inv.axe):k==="candle"?inv.candle:k==="coat"?inv.coat:inv.bread>0;
   sl.classList.toggle("have",!!have); if(k==="candle")sl.classList.toggle("lit",inv.candleLit); });
-  durEl.textContent = weapon?weapon.dur:""; }
+  durEl.textContent = weapon?weapon.dur:""; breadnEl.textContent = inv.bread>0?inv.bread:""; }
 
 // ---------- loop ----------
 let last=0; function frame(ts){ const dt=Math.min(0.05,(ts-last)/1000)||0; last=ts; update(dt); render(); requestAnimationFrame(frame); }
