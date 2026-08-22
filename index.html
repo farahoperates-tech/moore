@@ -370,7 +370,7 @@ function sanClick(x,y){
   if(scene.step===3){ if(Math.abs(x-40)<16&&Math.abs(y-104)<20){ sfxLight(); doFade(()=>gotoRoom(0,"s")); } else walkTo(x,y); return; }
 }
 function lightCandle(){ sfxLight(); inv.candle=true; inv.candleLit=true; belt.knife={name:"knife",dur:10,max:10,dmg:1,range:24}; weapon=belt.knife; eqKey="knife"; setInv(); scene.step=3; hintEl.textContent="click the door"; candleR=1;
-  caption("You light the candle — your soul-light, a splinter of the moon. You see the room. You see yourself, and the blood you wear.",{cb:()=>{ setTimeout(()=>caption("A door. West. Your legs already know it is the only way."),800); }}); }
+  caption("You light the candle — your soul-light, a splinter of the moon. You see the room. You see yourself, and the blood you wear.",{cb:()=>{ setTimeout(()=>caption("A door — glowing gold. Your legs already know it is the only way out of here."),800); }}); }
 
 // ---------- rooms ----------
 function gotoRoom(i,from){ ri=i; const rm=R[i]; scene={mode:"play"}; placeEl.textContent=rm.name;
@@ -568,7 +568,8 @@ function render(){
   if(scene.mode==="boot"){ px(0,0,W,H,C.night); g.fillStyle=C.phos; g.font="8px 'Courier New',monospace"; g.textBaseline="top";
     const L=["GARBHA  //  the golden womb","chapter one : asia","","> loading dream.exe .............. ok","> memory ....................... corrupt","> you ......................... unborn"];
     for(let i=0;i<L.length;i++)g.fillText(L[i],14,28+i*12); if(Math.floor(T*2)%2===0){g.fillStyle=C.gold;g.fillText("> CLICK / ANY KEY TO BE BORN",14,28+7*12);} return; }
-  if(scene.mode==="san"){ drawSan(); applyDark(inv.candleLit?0.86:0.985); if(scene.step===1&&!inv.candleLit)drawArrow(); if(scene.step===2&&!inv.candleLit)drawItems(); }
+  if(scene.mode==="san"){ drawSan(); applyDark(inv.candleLit?0.86:0.985); if(scene.step===1&&!inv.candleLit)drawArrow(); if(scene.step===2&&!inv.candleLit)drawItems();
+    if(scene.step===3){ const dx=40,dy=100,by=Math.sin(T*4)*3; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(dx,dy,0,dx,dy,24); gr.addColorStop(0,"rgba(255,207,92,.6)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(dx-24,dy-24,48,48); g.fillStyle=C.gold; px(dx+16+by,dy-1,7,2,C.gold); px(dx+16+by,dy-4,2,3,C.gold); px(dx+16+by,dy+1,2,3,C.gold); px(dx+14+by,dy-2,2,4,C.gold); g.restore(); } }
   else if(scene.mode==="play"){ drawScene(); applyDark(BIOME[R[ri].b].dark); drawFrost(); drawBeacons(); drawAlerts(); drawHUD(); }
   else if(scene.mode==="end"){ drawScene(); applyDark(0.5); drawHUD(); g.fillStyle="rgba(5,10,7,.5)"; g.fillRect(0,0,W,H); g.textAlign="center"; g.fillStyle=C.gold; g.font="10px 'Courier New',monospace"; g.fillText("KNOWLEDGE",W/2,84); g.fillStyle=C.spirit; g.font="7px 'Courier New',monospace"; g.fillText("the world boots up",W/2,98); g.textAlign="left"; }
   if(inv.mapOpen && scene.mode==="play") drawMap();
