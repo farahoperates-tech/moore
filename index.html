@@ -68,8 +68,8 @@
       <div class="slot" data-i="bow" title="bow"><canvas width="16" height="16"></canvas><span class="dur" id="arrn"></span></div>
       <div class="slot" data-i="candle" title="candle"><canvas width="16" height="16"></canvas></div>
       <div class="slot" data-i="coat" title="coat"><canvas width="16" height="16"></canvas></div>
-      <div class="slot" data-i="bread" title="bread"><canvas width="16" height="16"></canvas><span class="dur" id="breadn"></span></div>
-      <div class="slot" data-i="berries" title="berries"><canvas width="16" height="16"></canvas><span class="dur" id="berryn"></span></div>
+      <div class="slot" data-i="food" title="food"><canvas width="16" height="16"></canvas><span class="dur" id="breadn"></span></div>
+      <div class="slot" data-i="map" title="map"><canvas width="16" height="16"></canvas></div>
     </div>
     <div id="hint">click to wake</div>
     <button id="mute">♪ SOUND</button>
@@ -82,7 +82,7 @@ const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothin
 const W=320,H=200;
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
-      breadnEl=document.getElementById("breadn"), berrynEl=document.getElementById("berryn"), arrnEl=document.getElementById("arrn");
+      breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
 
 const C={ ink:"#05070f", night:"#080c1e",
   skin:"#d2a074", skinD:"#a97e54", hair:"#22161a",
@@ -206,17 +206,17 @@ function icon(kind,c,ox,oy,s){ const P=(a,b,w,h,col)=>{c.fillStyle=col;c.fillRec
   else if(kind==="bow"){c.strokeStyle=C.trunk;c.lineWidth=Math.max(1,s);c.beginPath();c.arc(ox+9*s,oy+8*s,6*s,-1.1,1.1);c.stroke();c.strokeStyle="#d8cdb0";c.beginPath();c.moveTo(ox+5*s,oy+2*s);c.lineTo(ox+5*s,oy+14*s);c.stroke();}
   else if(kind==="candle"){P(6,5,4,10,C.bone);P(6,5,2,10,"#efe6c8");P(7,1,2,4,C.flame);P(7,0,2,2,C.gold);}
   else if(kind==="coat"){P(4,4,8,10,C.coat);P(4,4,8,3,C.coatH);P(7,5,2,9,"#3a251a");}
-  else if(kind==="bread"){P(4,6,8,6,"#b07a3a");P(4,6,8,2,"#caa060");P(5,8,1,1,"#5c3a16");P(9,9,1,1,"#5c3a16");}
-  else if(kind==="berries"){P(5,6,3,3,C.blood);P(9,7,3,3,C.blood);P(7,10,3,3,C.bloodD);P(6,4,2,2,"#2a3320");} }
+  else if(kind==="food"){P(4,6,8,6,"#b07a3a");P(4,6,8,2,"#caa060");P(5,8,1,1,"#5c3a16");P(9,9,1,1,"#5c3a16");}
+  else if(kind==="map"){P(3,3,10,10,"#c9b78a");P(3,3,10,2,"#ddc99a");P(4,5,8,1,"#7a6a44");P(4,8,8,1,"#7a6a44");P(6,4,1,8,"#7a6a44");P(9,6,2,2,C.blood);} }
 document.querySelectorAll("#inv .slot").forEach(sl=>{ const c=sl.querySelector("canvas").getContext("2d"); c.imageSmoothingEnabled=false; icon(sl.dataset.i,c,0,0,1);
   sl.addEventListener("pointerdown",e=>{ e.preventDefault(); actx(); useItem(sl.dataset.i); }); });
 function useItem(k){
-  if(k==="bread"){ if(inv.bread>0){inv.bread--;player.hunger=Math.min(100,player.hunger+45);setInv();sfxStep();caption("You eat a piece of bread. Your hands steady.");} else caption("No bread left."); }
-  else if(k==="berries"){ if(inv.berries>0){inv.berries--;player.hunger=Math.min(100,player.hunger+18);setInv();sfxStep();caption("Bitter berries. Something, at least.");} else caption("No berries. Forage while it's still green."); }
-  else if(k==="knife"){ caption(weapon?("Your "+weapon.name+" has "+weapon.dur+" strikes left."):"Your blade is gone. Find another."); }
-  else if(k==="bow"){ caption(inv.bow?("Bow ready. "+inv.arrows+" arrows. Click a distant foe to loose."):"You have no bow yet. There are old weapons in caves."); }
+  if(k==="food"){ if(inv.food>0){inv.food--;player.hunger=Math.min(100,player.hunger+30);setInv();sfxStep();caption("You eat. Your hands steady.");} else caption("No food. Forage the bushes, or hunt the beasts."); }
+  else if(k==="map"){ if(inv.map){ inv.mapOpen=!inv.mapOpen; } else caption("You have no map. A dead traveller left one to the EAST."); }
+  else if(k==="knife"){ cycleMelee(); }
+  else if(k==="bow"){ caption(inv.bow?("Bow: "+inv.arrows+" arrows. Tap a distant foe to loose one."):"No bow yet. Old weapons wait in caves."); }
   else if(k==="candle"){ caption("The candle is your soul-light — a splinter of the moon. It never dies."); }
-  else if(k==="coat"){ caption(inv.coat?"The coat blunts the cold.":"No coat yet. Look on the frozen dead."); }
+  else if(k==="coat"){ caption((inv.coat?"Coat: worn, the cold is slower. ":"No coat yet — look east. ")+(inv.shoes?"Boots: worn.":"No boots yet.")); }
 }
 
 // ---------- precip ----------
@@ -234,9 +234,13 @@ function drawPrecip(kind,t,north){
 
 // ---------- state ----------
 let scene={mode:"boot"}, T=0;
-const player={x:270,y:120,tx:270,ty:120,dir:"left",moving:false,phase:0,stepT:0,warmth:100,hunger:100,hp:3,maxHp:3,inv:0,atkCd:0,attackT:0};
-const inv={candle:false,candleLit:false,coat:false,bread:1,knife:0,axe:0,bow:false,arrows:0,berries:0};
+const player={x:270,y:120,tx:270,ty:120,dir:"left",moving:false,phase:0,stepT:0,warmth:100,hunger:100,hp:3,maxHp:3,inv:0,atkCd:0,attackT:0,entryGrace:0};
+const inv={candle:false,candleLit:false,coat:false,shoes:false,map:false,mapOpen:false,food:1,bow:false,arrows:0};
+const belt={knife:null,axe:null,blade:null}; let eqKey="knife";
 let weapon=null, candleR=0, flick=1, fade=0, fadeDir=0, fadeCb=null, knowledge=false, xp=0, flashT=0;
+function autoEquip(){ for(const k of ["blade","axe","knife"]){ if(belt[k]&&belt[k].dur>0){weapon=belt[k];eqKey=k;return;} } weapon=null; }
+function equipMelee(k){ if(belt[k]&&belt[k].dur>0){ weapon=belt[k]; eqKey=k; } }
+function cycleMelee(){ const owned=["knife","axe","blade"].filter(k=>belt[k]&&belt[k].dur>0); if(owned.length<2){ caption(weapon?("Only your "+weapon.name+", "+weapon.dur+" strikes left."):"No blade. Find one."); return; } let i=owned.indexOf(eqKey); i=(i+1)%owned.length; equipMelee(owned[i]); caption("Equipped: "+weapon.name+"."); setInv(); }
 let enemies=[], wildlife=[], parts=[], motes=[], arrows=[];
 let visited=new Set(), gateOpen=false, gateStage=0, windNorth=false, gateHint=0;
 
@@ -249,18 +253,18 @@ const clearEdges=(x,y)=>y<40||y>H-24||x<30||x>W-30;
 const R=[
  {b:"autumn",name:"ASIA · THE TAIGA HEART", exits:{n:1,e:2,s:3,w:4},
   enter:"You wake standing, grown, wearing blood that is not yours. Taiga in every direction. Something in you says: move.",
-  trees:seededTrees(9,11,BIOME.autumn,clearEdges), bush:[{x:120,y:150,ber:1},{x:210,y:70,ber:1},{x:80,y:90,ber:1}], fires:[],
-  corpse:{x:252,y:150}, coat:{x:252,y:138},
+  trees:seededTrees(9,11,BIOME.autumn,clearEdges), bush:[{x:120,y:150,ber:1},{x:210,y:70,ber:1,k:"apple"},{x:80,y:90,ber:1,k:"mush"}], fires:[],
   wild:[{t:"deer",x:180,y:120},{t:"raven",x:90,y:60}], enemies:[] },
  {b:"frost",name:"ASIA · THE BIRCH ROAD", exits:{s:0,e:5,n:9},
   enter:"Birches like white bones. The road bends north — and the cold begins to have opinions.",
-  trees:seededTrees(11,22,BIOME.frost,clearEdges), bush:[{x:150,y:150,ber:1}], fires:[{x:70,y:130,lit:0}], axe:{x:120,y:80},
+  trees:seededTrees(11,22,BIOME.frost,clearEdges), bush:[{x:150,y:150,ber:1},{x:90,y:90,ber:1,k:"apple"}], fires:[{x:70,y:130,lit:0}],
   wild:[{t:"raven",x:200,y:70}], enemies:[{t:"wolf",x:230,y:90}] },
- {b:"frost",name:"ASIA · THE DEAD HIGHWAY", exits:{w:0,e:6,n:5},
-  enter:"A road of the old world, drowned and risen. Iron carcasses rust in rows. They went somewhere, once, fast.",
-  trees:seededTrees(6,33,BIOME.frost,clearEdges), cars:[{x:120,y:110},{x:190,y:140}], fires:[],
-  slab:{x:150,y:80,say:"A slab that once held light. It is dark now. They pressed these to their faces to feel less alone."},
-  wild:[], enemies:[{t:"human",x:200,y:100}] },
+ {b:"frost",name:"ASIA · THE EAST CAMP", exits:{w:0,e:6,n:5},
+  enter:"A dead traveller's camp, half-buried in frost. They did not make it — but they packed well: a coat, boots, a spare axe, and a map they drew of these lands. Take it all.",
+  trees:seededTrees(5,33,BIOME.frost,(x,y)=>(x>70&&x<170&&y>60&&y<140)||clearEdges(x,y)), cars:[{x:210,y:150}], fires:[{x:150,y:120,lit:0}],
+  corpse:{x:110,y:100}, coat:{x:92,y:92}, shoes:{x:128,y:92}, axe:{x:110,y:128}, map:{x:150,y:74},
+  slab:{x:232,y:80,say:"A slab that once held light. They pressed these to their faces to feel less alone."},
+  wild:[], enemies:[] },
  {b:"frost",name:"ASIA · THE MIRE", exits:{n:0,w:7},
   enter:"Black water and reeds. Ravens keep count of you. Berries cling to the last unfrozen bank.",
   trees:seededTrees(8,44,BIOME.frost,clearEdges), bush:[{x:120,y:90,ber:1},{x:210,y:150,ber:1}], fires:[{x:160,y:120,lit:0}],
@@ -273,9 +277,9 @@ const R=[
   enter:"A town the snow is eating. Doorways to nothing. The soulless still walk their old streets.",
   trees:seededTrees(5,66,BIOME.winter,clearEdges), cars:[{x:100,y:150}], tower:{x:230,y:120}, fires:[{x:150,y:90,lit:0}],
   wild:[], enemies:[{t:"wolf",x:200,y:70},{t:"human",x:120,y:120}] },
- {b:"cave",name:"ASIA · THE CAVE", exits:{w:2,s:5}, cave:1,
-  enter:"Out of the wind at last. Warm. Old hands left weapons here for someone — maybe for you. Take them.",
-  trees:[], axe:{x:110,y:130}, bow:{x:210,y:100}, slab:{x:150,y:70,say:"Scratched into the rock: names, thousands of them, and one line — 'we were here, we were kind, at the end.'"},
+ {b:"cave",name:"ASIA · THE CAVE (OLD ARMORY)", exits:{w:2,s:5}, cave:1,
+  enter:"Out of the wind at last — a cave, and warm. Old hands cached weapons here for whoever came next: a bow, and a long blade of star-metal. Take them.",
+  trees:[], blade:{x:110,y:130}, bow:{x:210,y:105}, slab:{x:150,y:66,say:"Scratched into the rock: names, thousands of them, and one line — 'we were here, we were kind, at the end.'"},
   wild:[], enemies:[] },
  {b:"winter",name:"ASIA · THE FROZEN RIVER", exits:{e:3}, river:1,
   enter:"A river gone to iron. Something huge drinks at a crack in the ice. It lifts its head. It has seen you.",
@@ -295,6 +299,7 @@ const R=[
   wild:[], enemies:[] }
 ];
 const EXPLORABLE=[0,1,2,3,4,5,6,7,8,9];
+const MP=[[2,3],[2,2],[3,3],[2,4],[1,3],[4,3],[3,2],[1,4],[0,3],[2,1],[2,0]]; // rough map coords per room
 let ri=0;
 
 // ---------- input ----------
@@ -302,11 +307,12 @@ function toLocal(e){ const r=cv.getBoundingClientRect(); const cx=(e.touches?e.t
   const cy=(e.touches?e.touches[0].clientY:e.clientY); return {x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height*H}; }
 cv.addEventListener("pointerdown",e=>{ e.preventDefault(); actx(); const p=toLocal(e); click(p.x,p.y); });
 addEventListener("keydown",e=>{ if(e.key==="m"||e.key==="M"){muteBtn.click();return;} if(scene.mode==="boot"){startGame();return;} if(e.code==="Space"){e.preventDefault();attack();} });
-function walkTo(x,y,cb){ player.tx=Math.max(12,Math.min(W-12,x)); player.ty=Math.max(40,Math.min(H-14,y)); player.arriveCb=cb||null; }
+function walkTo(x,y,cb){ player.tx=Math.max(5,Math.min(W-5,x)); player.ty=Math.max(46,Math.min(H-6,y)); player.arriveCb=cb||null; }
 
 function click(x,y){
   if(scene.mode==="boot"){ startGame(); return; }
   if(fadeDir!==0) return;
+  if(inv.mapOpen){ inv.mapOpen=false; return; }
   if(!capDone()){ capShown=capFull.length; capEl.textContent=capFull; if(onCapDone){const c=onCapDone;onCapDone=null;c();} return; }
   if(scene.mode==="san"){ sanClick(x,y); return; }
   if(scene.mode!=="play") return;
@@ -321,22 +327,20 @@ function click(x,y){
   // interact: fires, pickups, slabs, dweller, shrine
   if(rm.fires) for(const f of rm.fires){ if(!f.lit && Math.hypot(x-f.x,y-f.y)<16){ walkTo(f.x,f.y+10,()=>lightFire(f)); return; } }
   if(rm.coat && !rm.coat.got && Math.hypot(x-rm.coat.x,y-rm.coat.y)<16){ walkTo(rm.coat.x,rm.coat.y+10,()=>{rm.coat.got=1;inv.coat=true;setInv();caption("You take the coat. The cold loses some teeth.");}); return; }
-  if(rm.axe && !rm.axe.got && Math.hypot(x-rm.axe.x,y-rm.axe.y)<16){ walkTo(rm.axe.x,rm.axe.y+10,()=>{rm.axe.got=1;inv.axe=true;weapon={name:"axe",dur:16,max:16,dmg:2,range:26};setInv();caption("An axe. Heavier. It will last.");}); return; }
-  if(rm.bow && !rm.bow.got && Math.hypot(x-rm.bow.x,y-rm.bow.y)<16){ walkTo(rm.bow.x,rm.bow.y+10,()=>{rm.bow.got=1;inv.bow=true;inv.arrows+=12;setInv();caption("A bow, and a quiver. Now you can strike from afar. Click a distant foe.");}); return; }
-  if(rm.bush) for(const bs of rm.bush){ if(bs.ber && Math.hypot(x-bs.x,y-bs.y)<16){ walkTo(bs.x,bs.y+10,()=>{bs.ber=0;inv.berries++;setInv();caption("You gather berries. Saved for a hungrier hour.");}); return; } }
+  if(rm.shoes && !rm.shoes.got && Math.hypot(x-rm.shoes.x,y-rm.shoes.y)<16){ walkTo(rm.shoes.x,rm.shoes.y+10,()=>{rm.shoes.got=1;inv.shoes=true;setInv();caption("Old boots, still good. Warmer feet, surer steps.");}); return; }
+  if(rm.map && !rm.map.got && Math.hypot(x-rm.map.x,y-rm.map.y)<16){ walkTo(rm.map.x,rm.map.y+10,()=>{rm.map.got=1;inv.map=true;setInv();caption("A charcoal map — a dead traveller's own wandering. Tap the map to open what you have seen.");}); return; }
+  if(rm.axe && !rm.axe.got && Math.hypot(x-rm.axe.x,y-rm.axe.y)<16){ walkTo(rm.axe.x,rm.axe.y+10,()=>{rm.axe.got=1;belt.axe={name:"axe",dur:16,max:16,dmg:2,range:26};if(!weapon){weapon=belt.axe;eqKey="axe";}setInv();caption("An axe joins your belt. The knife stays. Tap the blade to switch.");}); return; }
+  if(rm.blade && !rm.blade.got && Math.hypot(x-rm.blade.x,y-rm.blade.y)<16){ walkTo(rm.blade.x,rm.blade.y+10,()=>{rm.blade.got=1;belt.blade={name:"long blade",dur:28,max:28,dmg:2,range:30};if(!weapon){weapon=belt.blade;eqKey="blade";}setInv();caption("A long blade of old-world steel — longer reach, and it does not tire quickly.");}); return; }
+  if(rm.bow && !rm.bow.got && Math.hypot(x-rm.bow.x,y-rm.bow.y)<16){ walkTo(rm.bow.x,rm.bow.y+10,()=>{rm.bow.got=1;inv.bow=true;inv.arrows+=12;setInv();caption("A bow, and a quiver. Tap a distant foe to loose an arrow.");}); return; }
+  if(rm.bush) for(const bs of rm.bush){ if(bs.ber && Math.hypot(x-bs.x,y-bs.y)<16){ walkTo(bs.x,bs.y+10,()=>{bs.ber=0;inv.food++;setInv();caption(bs.k==="apple"?"Frozen apples, hard as stone but sweet.":bs.k==="mush"?"Pale mushrooms. Probably fine.":"Bitter berries. Saved for a hungrier hour.");}); return; } }
   if(rm.slab && Math.hypot(x-rm.slab.x,y-rm.slab.y)<18){ walkTo(rm.slab.x,rm.slab.y+12,()=>caption(rm.slab.say)); return; }
   if(rm.dweller && Math.hypot(x-rm.dweller.x,y-rm.dweller.y)<18){ walkTo(rm.dweller.x+16,rm.dweller.y+8,()=>caption(knowledge?"The dweller turns. 'The Warming took them,' it says. 'The sea was patient.'":"The dweller only points at the water. It has no words for you. Not yet.")); return; }
   if(rm.shrine && Math.hypot(x-rm.shrine.x,y-rm.shrine.y)<22){ walkTo(rm.shrine.x+18,rm.shrine.y+8,()=>takeKnowledge()); return; }
-  // edge travel (all directions)
-  if(y<26 && rm.exits.n!=null){ walkTo(x,18,()=>travel("n")); return; }
-  if(y>H-26 && rm.exits.s!=null){ walkTo(x,H-18,()=>travel("s")); return; }
-  if(x<26 && rm.exits.w!=null){ walkTo(16,y,()=>travel("w")); return; }
-  if(x>W-26 && rm.exits.e!=null){ walkTo(W-16,y,()=>travel("e")); return; }
-  walkTo(x,y);
+  walkTo(x,y);   // just walk — reaching an edge auto-travels
 }
 function travel(dir){
   const rm=R[ri];
-  if(rm.guard && dir==="n" && !gateOpen){ caption("The guardian throws you back like a leaf. 'Not yet,' the wind seems to say. 'You have not seen enough of the world.'"); player.tx=W/2;player.ty=H/2; sfxHurt(); return; }
+  if(rm.guard && dir==="n" && !gateOpen){ caption("The guardian throws you back like a leaf. 'Not yet,' the wind seems to say. 'You have not seen enough of the world.'"); player.x=W/2;player.y=H/2;player.tx=W/2;player.ty=H/2;player.entryGrace=0.7; sfxHurt(); return; }
   gotoRoom(rm.exits[dir], dir);
 }
 function attack(){
@@ -345,14 +349,16 @@ function attack(){
   const dx={left:-1,right:1,up:0,down:0}[player.dir]||0, dy={up:-1,down:1,left:0,right:0}[player.dir]||0;
   const hx=player.x+dx*14, hy=player.y+dy*14; let hit=false;
   for(const en of enemies){ if(en.dead)continue; if(Math.hypot(hx-en.x,hy-en.y)<weapon.range){ hit=true; en.hp-=weapon.dmg||1; en.hurt=0.2; sfxHitEnemy(); en.x+=dx*5; en.y+=dy*5; burst(en.x,en.y,C.blood,5); if(en.hp<=0)killEnemy(en); } }
-  if(hit){ weapon.dur--; if(weapon.dur<=0){ sfxBreak(); caption(weapon.name==="knife"?"Your knife shatters. Old weapons wait in caves — an axe, a bow.":"The axe splinters."); weapon=null; } }
+  if(hit){ weapon.dur--; if(weapon.dur<=0){ sfxBreak(); const was=weapon.name; belt[eqKey]=null; autoEquip(); caption("Your "+was+" breaks."+(weapon?(" You switch to your "+weapon.name+"."):(" You have no blade — run, or find one."))); } }
   setInv();
 }
 function shoot(tx,ty){ if(!inv.bow||inv.arrows<=0||player.atkCd>0)return; player.atkCd=0.4; inv.arrows--; setInv(); sfxBow();
   const a=Math.atan2(ty-player.y,tx-player.x); arrows.push({x:player.x,y:player.y,vx:Math.cos(a)*170,vy:Math.sin(a)*170,life:1.4}); }
 function killEnemy(en){ en.dead=1; xp+=en.t==="ranger"?5:en.t==="bear"?3:1;
+  const drop={wolf:1,bear:4,deer:2,human:0,ranger:0}[en.t]||0; if(drop>0){ inv.food+=drop; }
   if(en.t==="ranger") caption("The guardian folds into light. But the pass north is still sealed to you.");
-  if(en.t==="bear") caption("The great bear falls. The river is yours to cross."); setInv(); }
+  else if(en.t==="bear") caption("The great bear falls — a feast of meat. The river is yours to cross.");
+  else if(drop>0) caption("You take the meat. Food for the cold road."); setInv(); }
 function lightFire(f){ if(!inv.candleLit){caption("Nothing to light it with.");return;} f.lit=1; sfxLight(); caption("The fire catches. Warmth. Stand close and thaw."); }
 
 // ---------- sanctuary ----------
@@ -360,18 +366,18 @@ function startGame(){ scene={mode:"san",step:0}; placeEl.textContent="GARBHA —
   caption("You wake in a dark room. You do not know why. You do not know where.",{cb:()=>{ setTimeout(()=>caption("It is dark. Your heart is beating too fast.",{cb:()=>{ setTimeout(()=>{scene.step=1;hintEl.textContent="click the golden arrow";caption("Something glints in the black. It wants you to reach for it.");},600); }}),600); }}); }
 function sanClick(x,y){
   if(scene.step===1){ if(Math.hypot(x-160,y-70)<40){ sfxChime(); scene.step=2; hintEl.textContent="click the candle"; caption("A box has opened. Inside: a candle. a knife. and something to munch on."); } return; }
-  if(scene.step===2){ const items=[{k:"knife",x:130},{k:"candle",x:160},{k:"bread",x:190}]; for(const it of items){ if(Math.abs(x-it.x)<14&&Math.abs(y-70)<16){ if(it.k==="candle")lightCandle(); else caption("Not yet. Light the candle first — you cannot see."); return; } } return; }
+  if(scene.step===2){ const items=[{k:"knife",x:130},{k:"candle",x:160},{k:"food",x:190}]; for(const it of items){ if(Math.abs(x-it.x)<14&&Math.abs(y-70)<16){ if(it.k==="candle")lightCandle(); else caption("Not yet. Light the candle first — you cannot see."); return; } } return; }
   if(scene.step===3){ if(Math.abs(x-40)<16&&Math.abs(y-104)<20){ sfxLight(); doFade(()=>gotoRoom(0,"s")); } else walkTo(x,y); return; }
 }
-function lightCandle(){ sfxLight(); inv.candle=true; inv.candleLit=true; inv.knife=true; weapon={name:"knife",dur:10,max:10,dmg:1,range:24}; setInv(); scene.step=3; hintEl.textContent="click the door"; candleR=1;
+function lightCandle(){ sfxLight(); inv.candle=true; inv.candleLit=true; belt.knife={name:"knife",dur:10,max:10,dmg:1,range:24}; weapon=belt.knife; eqKey="knife"; setInv(); scene.step=3; hintEl.textContent="click the door"; candleR=1;
   caption("You light the candle — your soul-light, a splinter of the moon. You see the room. You see yourself, and the blood you wear.",{cb:()=>{ setTimeout(()=>caption("A door. West. Your legs already know it is the only way."),800); }}); }
 
 // ---------- rooms ----------
 function gotoRoom(i,from){ ri=i; const rm=R[i]; scene={mode:"play"}; placeEl.textContent=rm.name;
-  hintEl.textContent="click to walk · edges to travel · click foes to fight";
-  if(from==="s"){player.x=W/2;player.y=H-24;} else if(from==="n"){player.x=W/2;player.y=30;}
-  else if(from==="e"){player.x=16;player.y=H/2;} else if(from==="w"){player.x=W-16;player.y=H/2;} else {player.x=W-16;player.y=H/2;}
-  player.tx=player.x;player.ty=player.y;player.dir="left";player.arriveCb=null;
+  hintEl.textContent="tap to walk · walk to an edge to travel · tap foes to fight";
+  if(from==="s"){player.x=W/2;player.y=56;} else if(from==="n"){player.x=W/2;player.y=H-24;}
+  else if(from==="e"){player.x=14;player.y=H/2;} else if(from==="w"){player.x=W-14;player.y=H/2;} else {player.x=W-14;player.y=H/2;}
+  player.tx=player.x;player.ty=player.y;player.dir="left";player.arriveCb=null;player.entryGrace=0.5;
   enemies=(rm.enemies||[]).filter(e=>!(rm.guard&&e.t==="ranger"&&gateOpen)).map(mkEnemy);
   wildlife=(rm.wild||[]).map(w=>({t:w.t,x:w.x,y:w.y,ph:Math.random()*6,vx:0,vy:0,flee:0}));
   arrows=[]; parts=[]; motes=[];
@@ -379,7 +385,7 @@ function gotoRoom(i,from){ ri=i; const rm=R[i]; scene={mode:"play"}; placeEl.tex
   candleR=Math.max(candleR,1);
   visited.add(i); checkGate();
   caption(rm.enter, rm.scent?{cb:()=>{ setTimeout(()=>caption("You can smell it now. A soul, ancient, close.",{voice:knowledge}),1400); }}:null);
-  if(i===0 && visited.size<=1){ setTimeout(()=>caption("Top-right: WARMTH (flame) and FOOD (meat) — keep both up. Tap a beast to fight it; tap the ground to walk. And grab that glowing coat before the cold deepens."),4200); }
+  if(i===0 && visited.size<=1){ setTimeout(()=>caption("You must travel EAST, or the cold will have you before you learn its name. A dead traveller there left warmth — and a map.",{cb:()=>{ setTimeout(()=>caption("Tap to walk. Walk to an edge to travel. Tap a beast to fight. Top-right: keep WARMTH and FOOD alive."),3600); }}),3800); }
 }
 function checkGate(){ if(gateOpen) return; if(EXPLORABLE.every(r=>visited.has(r))){ openGate(); } }
 function openGate(){ gateOpen=true; windNorth=true; gateStage=1; setWind(0.2);
@@ -425,6 +431,13 @@ function update(dt){
 
   const rm=R[ri], B=BIOME[rm.b];
   moveToward(dt); candleR=Math.min(58,candleR+120*dt);
+  // walk to any edge that has a way, and be carried through
+  if(player.entryGrace>0) player.entryGrace-=dt;
+  else if(capDone()){ const ex=rm.exits;
+    if(ex.w!=null && player.x<=8){ travel("w"); return; }
+    if(ex.e!=null && player.x>=W-8){ travel("e"); return; }
+    if(ex.n!=null && player.y<=48){ travel("n"); return; }
+    if(ex.s!=null && player.y>=H-9){ travel("s"); return; } }
   // survival
   let nearFire=false; if(rm.fires) for(const f of rm.fires){ if(f.lit && Math.hypot(player.x-f.x,player.y-f.y)<44) nearFire=true; }
   if(B.cold<0){ player.warmth=Math.min(100,player.warmth+ -B.cold*dt); } // cave warms you
@@ -466,7 +479,12 @@ function drawGround(B,rm){ px(0,0,W,H,B.g0);
   for(let i=0;i<70;i++)px(rn()*W,44+rn()*152,rn()<0.5?1:2,1,rn()<0.5?B.g1:B.g0);
   if(B.snow>0){ g.globalAlpha=B.snow*0.85; for(let i=0;i<55;i++){const x=rn()*W,y=44+rn()*152;px(x,y,2+rn()*3,1+rn()*2,C.snow);} g.globalAlpha=1; if(B.snow>=1){g.globalAlpha=0.5;px(0,44,W,156,C.snow);g.globalAlpha=1;} }
   if(rm.sea){ for(let y=118;y<H;y+=3){ const off=Math.sin(T*2+y*0.3)*2; px(0,y,W,2, y<124?C.seaH:(y%6<3?C.sea:C.seaD)); px(off,y,W,1,C.sea);} }
-  if(rm.cave){ px(0,44,W,10,"#0a0806"); px(0,H-14,W,14,"#0a0806"); for(let i=0;i<10;i++)px(rn()*W,50+rn()*10,3,4,"#0a0806"); }
+  if(rm.cave){ px(0,44,W,H,"#0d0a08");
+    for(let i=0;i<40;i++)px(rn()*W,48+rn()*146,2+rn()*3,1+rn()*2,"#171310");
+    px(0,44,W,16,"#080605"); px(0,H-18,W,18,"#080605"); px(0,44,16,H,"#080605"); px(W-16,44,16,H,"#080605");
+    for(let i=0;i<12;i++){ const sx=18+i*25; px(sx,58,3,6+((i*7)%11),"#0a0806"); }        // stalactites
+    for(let i=0;i<6;i++){ const sx=30+i*48; px(sx,H-24,3,5+((i*5)%8),"#0a0806"); }         // stalagmites
+    const gr=g.createRadialGradient(4,H/2,0,4,H/2,62); gr.addColorStop(0,"rgba(120,150,190,.5)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,H/2-62,62,124); } // cave mouth
   if(rm.river){ for(let y=90;y<140;y+=3)px(0,y,W,2,y%6<3?"#3a4658":"#2e3a48"); for(let i=0;i<8;i++)px(rn()*W,92+rn()*44,4,1,C.ice); }
 }
 function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
@@ -476,7 +494,10 @@ function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   if(rm.corpse) sprCorpse(rm.corpse.x,rm.corpse.y);
   if(rm.bush) for(const bs of rm.bush) sprBush(bs.x,bs.y,bs.ber);
   if(rm.coat&&!rm.coat.got) sprCoatItem(rm.coat.x,rm.coat.y);
+  if(rm.shoes&&!rm.shoes.got) sprShoesItem(rm.shoes.x,rm.shoes.y);
+  if(rm.map&&!rm.map.got) sprMapItem(rm.map.x,rm.map.y);
   if(rm.axe&&!rm.axe.got) sprAxe(rm.axe.x,rm.axe.y);
+  if(rm.blade&&!rm.blade.got) sprBladeItem(rm.blade.x,rm.blade.y);
   if(rm.bow&&!rm.bow.got) sprBowPick(rm.bow.x,rm.bow.y);
   if(rm.fires) for(const f of rm.fires) sprFire(f.x,f.y,f.lit,T);
   if(rm.dweller) sprDweller(rm.dweller.x,rm.dweller.y,T);
@@ -497,8 +518,21 @@ function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   if(ex.s!=null)px(W/2-2,H-7,4,3,C.phos); if(ex.w!=null)px(3,H/2-2,3,4,C.phos); if(ex.e!=null)px(W-6,H/2-2,3,4,C.phos); g.globalAlpha=1;
 }
 function sprCoatItem(x,y){ px(x-5,y+3,10,3,C.shadow); px(x-4,y-6,8,10,C.coat); px(x-4,y-6,8,3,C.coatH); px(x-1,y-5,2,9,"#3a251a"); }
+function sprShoesItem(x,y){ px(x-5,y+2,10,2,C.shadow); px(x-5,y-1,4,4,"#3a2a1c"); px(x+1,y-1,4,4,"#3a2a1c"); px(x-5,y+2,4,1,"#20130b"); px(x+1,y+2,4,1,"#20130b"); }
+function sprMapItem(x,y){ px(x-5,y+2,10,2,C.shadow); px(x-5,y-6,10,9,"#c9b78a"); px(x-5,y-6,10,2,"#ddc99a"); px(x-3,y-3,6,1,"#7a6a44"); px(x-1,y-6,1,9,"#7a6a44"); px(x+2,y-2,1,1,C.blood); }
+function sprBladeItem(x,y){ px(x-4,y+3,8,2,C.shadow); px(x-1,y-11,2,15,"#cfe0ff"); px(x-1,y-11,1,15,"#eef4ff"); px(x-3,y+2,6,2,C.goldD); px(x-1,y+4,2,3,C.trunk); }
 function drawBeacons(){ const rm=R[ri],by=Math.sin(T*4)*2; const spark=(x,y)=>{ g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(x,y-13+by,0,x,y-13+by,10); gr.addColorStop(0,"rgba(255,207,92,.5)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(x-10,y-23+by,20,20); g.fillStyle=C.gold; g.fillRect(x-1,y-16+by,2,6); g.fillRect(x-3,y-13+by,6,2); g.restore(); };
-  if(rm.axe&&!rm.axe.got)spark(rm.axe.x,rm.axe.y); if(rm.bow&&!rm.bow.got)spark(rm.bow.x,rm.bow.y); if(rm.coat&&!rm.coat.got)spark(rm.coat.x,rm.coat.y); }
+  for(const key of ["axe","bow","coat","shoes","map","blade"]){ const it=rm[key]; if(it&&!it.got)spark(it.x,it.y); } }
+function drawMap(){ g.fillStyle="rgba(8,10,20,.93)"; g.fillRect(0,0,W,H);
+  g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.textAlign="center"; g.fillText("- THE MAP (what you have seen) -",W/2,12);
+  const ox=68,oy=46,cw=46,ch=32;
+  g.strokeStyle="#3a4a6a"; g.lineWidth=1;
+  for(let i=0;i<R.length;i++){ if(!visited.has(i))continue; const ex=R[i].exits; for(const d in ex){ const j=ex[d]; if(j==null||!visited.has(j))continue; const a=MP[i],b=MP[j]; g.beginPath(); g.moveTo(ox+a[0]*cw,oy+a[1]*ch); g.lineTo(ox+b[0]*cw,oy+b[1]*ch); g.stroke(); } }
+  for(let i=0;i<R.length;i++){ const p=MP[i],x=ox+p[0]*cw,y=oy+p[1]*ch;
+    if(i===ri){ g.fillStyle=C.gold; g.fillRect(x-4,y-4,8,8); }
+    else if(visited.has(i)){ g.fillStyle=C.phos; g.fillRect(x-3,y-3,6,6); } }
+  g.fillStyle=C.phos; g.font="7px 'Courier New',monospace"; g.fillText(R[ri].name.replace("ASIA · ",""),W/2,H-20);
+  g.fillStyle="#7d8ec9"; g.fillText("tap to close",W/2,H-9); g.textAlign="left"; }
 function drawAlerts(){ for(const en of enemies){ if(en.dead||!en.aggroOn)continue; const x=en.x,y=en.y-(en.t==="bear"?22:18),by=Math.sin(T*9)*1.5; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(x,y+by,0,x,y+by,11); gr.addColorStop(0,"rgba(255,207,92,.85)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(x-11,y-11+by,22,22); g.restore(); g.fillStyle=C.gold; g.fillRect(x-1,y-7+by,2,7); g.fillRect(x-1,y+2+by,2,2); } }
 function applyDark(a){ dg.clearRect(0,0,W,H); dg.fillStyle="rgba(4,6,14,"+a+")"; dg.fillRect(0,0,W,H); dg.globalCompositeOperation="destination-out";
   const cut=(cx,cy,r)=>{const gr=dg.createRadialGradient(cx,cy,0,cx,cy,r);gr.addColorStop(0,"rgba(0,0,0,1)");gr.addColorStop(.6,"rgba(0,0,0,.85)");gr.addColorStop(1,"rgba(0,0,0,0)");dg.fillStyle=gr;dg.fillRect(cx-r,cy-r,r*2,r*2);};
@@ -521,7 +555,7 @@ function drawHUD(){
   if(knowledge){ g.fillStyle=C.gold; g.font="7px 'Courier New',monospace"; g.fillText("LVL 1  XP "+xp,6,H-6); }
 }
 function drawArrow(){ const by=Math.sin(T*4)*4; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(160,64+by,0,160,64+by,26); gr.addColorStop(0,"rgba(255,207,92,.5)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(130,34+by,60,60); g.globalCompositeOperation="source-over"; g.fillStyle=C.gold; g.beginPath(); g.moveTo(160,78+by); g.lineTo(150,64+by); g.lineTo(156,64+by); g.lineTo(156,52+by); g.lineTo(164,52+by); g.lineTo(164,64+by); g.lineTo(170,64+by); g.closePath(); g.fill(); g.restore(); }
-function drawItems(){ const items=[{k:"knife",x:130},{k:"candle",x:160},{k:"bread",x:190}],by=Math.sin(T*3)*2; for(const it of items){ const iy=64+by,s=1.5; g.save(); g.globalCompositeOperation="lighter"; const base=it.k==="candle"?"rgba(255,200,90,":"rgba(150,170,210,"; const gr=g.createRadialGradient(it.x,iy,0,it.x,iy,17); gr.addColorStop(0,base+(it.k==="candle"?0.55:0.3)+")"); gr.addColorStop(1,base+"0)"); g.fillStyle=gr; g.fillRect(it.x-18,iy-18,36,36); g.restore(); icon(it.k,g,it.x-8*s,iy-8*s,s); if(it.k==="candle"){g.strokeStyle="rgba(255,207,92,"+(0.4+Math.sin(T*5)*0.3)+")";g.lineWidth=1;g.strokeRect(it.x-11,iy-13,22,27);} } }
+function drawItems(){ const items=[{k:"knife",x:130},{k:"candle",x:160},{k:"food",x:190}],by=Math.sin(T*3)*2; for(const it of items){ const iy=64+by,s=1.5; g.save(); g.globalCompositeOperation="lighter"; const base=it.k==="candle"?"rgba(255,200,90,":"rgba(150,170,210,"; const gr=g.createRadialGradient(it.x,iy,0,it.x,iy,17); gr.addColorStop(0,base+(it.k==="candle"?0.55:0.3)+")"); gr.addColorStop(1,base+"0)"); g.fillStyle=gr; g.fillRect(it.x-18,iy-18,36,36); g.restore(); icon(it.k,g,it.x-8*s,iy-8*s,s); if(it.k==="candle"){g.strokeStyle="rgba(255,207,92,"+(0.4+Math.sin(T*5)*0.3)+")";g.lineWidth=1;g.strokeRect(it.x-11,iy-13,22,27);} } }
 function drawSan(){ px(0,0,W,H,C.ink); for(let y=64;y<176;y+=16)for(let x=40;x<280;x+=16)px(x,y,15,15,(x/16+y/16)%2?"#171d33":"#12172b");
   px(36,60,248,4,"#141a30"); px(36,172,248,5,"#141a30"); px(36,60,4,118,"#141a30"); px(280,60,4,118,"#141a30");
   px(34,90,12,20,"#20130b"); px(35,91,10,18,C.trunk); px(35,91,10,3,C.trunkD); px(42,100,2,2,C.gold);
@@ -535,13 +569,14 @@ function render(){
   if(scene.mode==="san"){ drawSan(); applyDark(inv.candleLit?0.86:0.985); if(scene.step===1&&!inv.candleLit)drawArrow(); if(scene.step===2&&!inv.candleLit)drawItems(); }
   else if(scene.mode==="play"){ drawScene(); applyDark(BIOME[R[ri].b].dark); drawFrost(); drawBeacons(); drawAlerts(); drawHUD(); }
   else if(scene.mode==="end"){ drawScene(); applyDark(0.5); drawHUD(); g.fillStyle="rgba(5,10,7,.5)"; g.fillRect(0,0,W,H); g.textAlign="center"; g.fillStyle=C.gold; g.font="10px 'Courier New',monospace"; g.fillText("KNOWLEDGE",W/2,84); g.fillStyle=C.spirit; g.font="7px 'Courier New',monospace"; g.fillText("the world boots up",W/2,98); g.textAlign="left"; }
+  if(inv.mapOpen && scene.mode==="play") drawMap();
   if(flashT>0){ g.fillStyle="rgba(220,240,255,"+Math.min(1,flashT)+")"; g.fillRect(0,0,W,H); }
   if(fade>0){ g.fillStyle="rgba(3,5,12,"+fade+")"; g.fillRect(0,0,W,H); }
 }
 function setInv(){ document.querySelectorAll("#inv .slot").forEach(sl=>{ const k=sl.dataset.i;
-  const have=k==="knife"?(inv.knife||inv.axe):k==="bow"?inv.bow:k==="candle"?inv.candle:k==="coat"?inv.coat:k==="bread"?inv.bread>0:inv.berries>0;
+  const have=k==="knife"?!!weapon:k==="bow"?inv.bow:k==="candle"?inv.candle:k==="coat"?(inv.coat||inv.shoes):k==="food"?inv.food>0:k==="map"?inv.map:false;
   sl.classList.toggle("have",!!have); if(k==="candle")sl.classList.toggle("lit",inv.candleLit); });
-  durEl.textContent=weapon?weapon.dur:""; breadnEl.textContent=inv.bread>0?inv.bread:""; berrynEl.textContent=inv.berries>0?inv.berries:""; arrnEl.textContent=inv.bow?inv.arrows:""; }
+  durEl.textContent=weapon?weapon.dur:""; breadnEl.textContent=inv.food>0?inv.food:""; arrnEl.textContent=inv.bow?inv.arrows:""; }
 
 let last=0; function frame(ts){ const dt=Math.min(0.05,(ts-last)/1000)||0; last=ts; update(dt); render(); requestAnimationFrame(frame); }
 setInv(); requestAnimationFrame(frame);
