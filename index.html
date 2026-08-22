@@ -384,8 +384,9 @@ function gotoRoom(i,from){ ri=i; const rm=R[i]; scene={mode:"play"}; placeEl.tex
   if(!muted) windStart(); setWind(BIOME[rm.b].cold>4?0.13:0.06);
   candleR=Math.max(candleR,1);
   visited.add(i); checkGate();
-  caption(rm.enter, rm.scent?{cb:()=>{ setTimeout(()=>caption("You can smell it now. A soul, ancient, close.",{voice:knowledge}),1400); }}:null);
-  if(i===0 && visited.size<=1){ setTimeout(()=>caption("You must travel EAST, or the cold will have you before you learn its name. A dead traveller there left warmth — and a map.",{cb:()=>{ setTimeout(()=>caption("Tap to walk. Walk to an edge to travel. Tap a beast to fight. Top-right: keep WARMTH and FOOD alive."),3600); }}),3800); }
+  if(i===0 && !inv.map) hintEl.textContent="→ travel EAST — warmth & a map lie that way";
+  if(i===0 && visited.size<=1){ caption(rm.enter,{cb:()=>{ setTimeout(()=>caption("You must travel EAST, or the cold will have you before you learn its name. A dead traveller left warmth there — and a map.",{cb:()=>{ setTimeout(()=>caption("Tap to walk. Walk to any edge to travel. Tap a beast to fight."),2600); }}),700); }}); }
+  else caption(rm.enter, rm.scent?{cb:()=>{ setTimeout(()=>caption("You can smell it now. A soul, ancient, close.",{voice:knowledge}),1400); }}:null);
 }
 function checkGate(){ if(gateOpen) return; if(EXPLORABLE.every(r=>visited.has(r))){ openGate(); } }
 function openGate(){ gateOpen=true; windNorth=true; gateStage=1; setWind(0.2);
@@ -516,6 +517,7 @@ function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   const ex=rm.exits; g.globalAlpha=0.28+Math.sin(T*3)*0.16; g.fillStyle=windNorth&&ex.n!=null?C.gold:C.phos;
   if(ex.n!=null){ if(windNorth)px(W/2-1,4,2,8,C.gold),px(W/2-3,8,6,2,C.gold); else px(W/2-2,4,4,3,C.phos); }
   if(ex.s!=null)px(W/2-2,H-7,4,3,C.phos); if(ex.w!=null)px(3,H/2-2,3,4,C.phos); if(ex.e!=null)px(W-6,H/2-2,3,4,C.phos); g.globalAlpha=1;
+  if(ri===0 && !inv.map && ex.e!=null){ g.globalAlpha=0.6+Math.sin(T*4)*0.35; g.fillStyle=C.gold; px(W-12,H/2-1,7,2,C.gold); px(W-7,H/2-4,2,3,C.gold); px(W-7,H/2+1,2,3,C.gold); px(W-5,H/2-2,2,4,C.gold); g.globalAlpha=1; }
 }
 function sprCoatItem(x,y){ px(x-5,y+3,10,3,C.shadow); px(x-4,y-6,8,10,C.coat); px(x-4,y-6,8,3,C.coatH); px(x-1,y-5,2,9,"#3a251a"); }
 function sprShoesItem(x,y){ px(x-5,y+2,10,2,C.shadow); px(x-5,y-1,4,4,"#3a2a1c"); px(x+1,y-1,4,4,"#3a2a1c"); px(x-5,y+2,4,1,"#20130b"); px(x+1,y+2,4,1,"#20130b"); }
