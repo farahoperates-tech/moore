@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v21 · a real map at last";
+const W=320,H=200, BUILD="v22 · wear clothes & use your pack";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -236,7 +236,10 @@ function useItem(k){
   else if(k==="knife"){ cycleMelee(); }
   else if(k==="bow"){ caption(inv.bow?("Bow: "+inv.arrows+" arrows. Tap a distant foe to loose one."):"No bow yet. Old weapons wait in caves."); }
   else if(k==="candle"){ caption("The candle is your soul-light — a splinter of the moon. It never dies."); }
-  else if(k==="coat"){ caption((inv.coat?"Coat: worn, the cold is slower. ":"No coat yet — look east. ")+(inv.shoes?"Boots: worn.":"No boots yet.")); }
+  else if(k==="coat"){ const owned=[]; if(inv.coat)owned.push("coat"); if(inv.wraps)owned.push("wraps"); owned.push(null);
+    if(owned.length<=1){ caption("You have nothing to wear yet — a coat lies EAST, desert wraps in the hot south."); }
+    else { let i=owned.indexOf(worn); worn=owned[(i+1)%owned.length]; setInv();
+      caption(worn==="coat"?"You pull on the coat — warm north, oven south.":worn==="wraps"?"You wind on the desert wraps — light, made for the heat.":"You take off your outer clothes."); } }
 }
 
 // ---------- precip ----------
@@ -273,7 +276,7 @@ const EVILWIND=[
 const player={x:270,y:120,tx:270,ty:120,dir:"left",moving:false,phase:0,stepT:0,warmth:100,hunger:100,thirst:100,water:100,stamina:100,hp:3,maxHp:3,inv:0,atkCd:0,attackT:0,entryGrace:0};
 const inv={candle:false,candleLit:false,coat:false,shoes:false,wraps:false,medicine:false,pack:false,map:false,mapOpen:false,food:1,bow:false,arrows:0};
 const belt={knife:null,axe:null,blade:null}; let eqKey="knife";
-let weapon=null, candleR=0, flick=1, fade=0, fadeDir=0, fadeCb=null, knowledge=false, canRead=false, packOpen=false, houseTheme="ruin", xp=0, flashT=0;
+let weapon=null, candleR=0, flick=1, fade=0, fadeDir=0, fadeCb=null, knowledge=false, canRead=false, packOpen=false, houseTheme="ruin", worn=null, packSel=-1, xp=0, flashT=0;
 const frags=new Set(); const FRAG_TOTAL=7; const FRAGROOM={21:"mark",11:"voice",14:"page",20:"zero",15:"alphabet",26:"book",25:"grief"};
 let checkpoint={ri:0,x:W/2,y:H/2};
 function autoEquip(){ for(const k of ["blade","axe","knife"]){ if(belt[k]&&belt[k].dur>0){weapon=belt[k];eqKey=k;return;} } weapon=null; }
@@ -425,7 +428,7 @@ function toLocal(e){ const r=cv.getBoundingClientRect(); const cx=(e.touches?e.t
   const cy=(e.touches?e.touches[0].clientY:e.clientY); return {x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height*H}; }
 cv.addEventListener("pointerdown",e=>{ e.preventDefault(); actx(); const p=toLocal(e); click(p.x,p.y); });
 addEventListener("keydown",e=>{ if(e.key==="m"||e.key==="M"){muteBtn.click();return;} if(scene.mode==="boot"){startGame();return;}
-  if(e.key==="b"||e.key==="B"){ if(scene.mode==="play"){ if(inv.pack)packOpen=!packOpen; else caption("You have no pack yet — a dead traveller in the EAST carried one."); } return; }
+  if(e.key==="b"||e.key==="B"){ if(scene.mode==="play"){ if(inv.pack){ packOpen=!packOpen; packSel=-1; } else caption("You have no pack yet — a dead traveller in the EAST carried one."); } return; }
   if(e.code==="Space"){e.preventDefault();attack();} });
 function walkTo(x,y,cb){ player.tx=Math.max(5,Math.min(W-5,x)); player.ty=Math.max(46,Math.min(H-6,y)); player.arriveCb=cb||null; }
 
@@ -433,7 +436,7 @@ function click(x,y){
   if(scene.mode==="boot"){ startGame(); return; }
   if(fadeDir!==0) return;
   if(inv.mapOpen){ inv.mapOpen=false; return; }
-  if(packOpen){ packOpen=false; return; }
+  if(packOpen){ packClick(x,y); return; }
   if(!capDone()){ capShown=capFull.length; capEl.textContent=capFull; if(onCapDone){const c=onCapDone;onCapDone=null;c();} return; }
   if(scene.mode==="san"){ sanClick(x,y); return; }
   if(scene.mode==="house"){ if(Math.hypot(x-120,y-108)<34){ sleepNow(); } else if(x>250&&y<130&&y>90){ leaveHouse(); } else walkTo(x,y); return; }
@@ -451,7 +454,7 @@ function click(x,y){
   // interact: fires, pickups, slabs, dweller, shrine
   if(rm.fires) for(const f of rm.fires){ if(!f.lit && Math.hypot(x-f.x,y-f.y)<16){ walkTo(f.x,f.y+10,()=>lightFire(f)); return; } }
   if(rm.water) for(const wl of rm.water){ if(Math.hypot(x-wl.x,y-wl.y)<18){ walkTo(wl.x,wl.y+12,()=>{player.thirst=100;player.water=100;sfxStep();caption("You drink deep, and fill your skin. Cool water. You will live a while longer.");}); return; } }
-  if(rm.coat && !rm.coat.got && Math.hypot(x-rm.coat.x,y-rm.coat.y)<16){ walkTo(rm.coat.x,rm.coat.y+10,()=>{rm.coat.got=1;inv.coat=true;setInv();caption("You take the coat. The cold loses some teeth.");}); return; }
+  if(rm.coat && !rm.coat.got && Math.hypot(x-rm.coat.x,y-rm.coat.y)<16){ walkTo(rm.coat.x,rm.coat.y+10,()=>{rm.coat.got=1;inv.coat=true;worn="coat";setInv();caption("You take the coat and pull it on. The cold loses some teeth. (Open your pack — B — to change clothes.)");}); return; }
   if(rm.shoes && !rm.shoes.got && Math.hypot(x-rm.shoes.x,y-rm.shoes.y)<16){ walkTo(rm.shoes.x,rm.shoes.y+10,()=>{rm.shoes.got=1;inv.shoes=true;setInv();caption("Old boots, still good. Warmer feet, surer steps.");}); return; }
   if(rm.map && !rm.map.got && Math.hypot(x-rm.map.x,y-rm.map.y)<16){ walkTo(rm.map.x,rm.map.y+10,()=>{rm.map.got=1;inv.map=true;inv.pack=true;setInv();caption("A charcoal map — the dead traveller's own wandering — and the pack it hung in: ten worn pockets, still good. Tap the map to open the Record. Tap the pack (corner) or press B to open it.");}); return; }
   if(rm.axe && !rm.axe.got && Math.hypot(x-rm.axe.x,y-rm.axe.y)<16){ walkTo(rm.axe.x,rm.axe.y+10,()=>{rm.axe.got=1;belt.axe={name:"axe",dur:16,max:16,dmg:2,range:26};if(!weapon){weapon=belt.axe;eqKey="axe";}setInv();caption("An axe joins your belt. The knife stays. Tap the blade to switch.");}); return; }
@@ -618,7 +621,7 @@ function update(dt){
     if(ex.s!=null && player.y>=H-9 && Math.abs(player.x-W/2)<28){ travel("s"); return; } }
   // survival
   let nearFire=false; if(rm.fires) for(const f of rm.fires){ if(f.lit && Math.hypot(player.x-f.x,player.y-f.y)<44) nearFire=true; }
-  const sun=sunNow(); const gear=(inv.coat?0.42:1)*(inv.shoes?0.8:1);   // coat+boots ≈ a third of the cold
+  const sun=sunNow(); const gear=(worn==="coat"?0.42:1)*(inv.shoes?0.8:1);   // a WORN coat + boots ≈ a third of the cold
   if(B.cold<0){ player.warmth=Math.min(100,player.warmth+ -B.cold*dt); }               // cave warms you
   else if(nearFire){ player.warmth=Math.min(100,player.warmth+16*dt); }                 // fire warms
   else if(sun>0.6 && rm.b!=="cave"){ player.warmth=Math.min(100,player.warmth+(sun-0.55)*7*dt); } // midday sun warms
@@ -629,8 +632,8 @@ function update(dt){
   if(player.stamina<=0){ player.hp-=dt*0.14; if(Math.random()<dt*0.5&&capDone()) caption("You are exhausted past bearing. Find a house and sleep, or you will simply lie down here."); }
   else if(player.stamina<20 && Math.random()<dt*0.25 && capDone()) caption("Your legs drag. You need to sleep soon — look for a house.");
   // heat & thirst (deserts, jungle) — the coat COOKS you in the heat; wraps are made for it
-  if(B.hot){ const heatGear = inv.wraps?0.65 : (inv.coat?1.45:1); player.thirst-=B.hot*(0.6+sun*0.8)*heatGear*dt;
-    if(inv.coat && !inv.wraps && Math.random()<dt*0.12 && capDone()) caption("The coat is an oven out here. You need lighter clothes — desert wraps, off some poor soul who knew better.");
+  if(B.hot){ const heatGear = worn==="wraps"?0.6 : (worn==="coat"?1.5:1); player.thirst-=B.hot*(0.6+sun*0.8)*heatGear*dt;
+    if(worn==="coat" && Math.random()<dt*0.12 && capDone()) caption(inv.wraps?"The coat is an oven out here — open your pack (B) and put on your desert wraps.":"The coat is an oven out here. You need lighter clothes — desert wraps, off some poor soul who knew better.");
     if(player.thirst<=0){ player.thirst=0; player.hp-=dt*0.4; if(Math.random()<dt) caption("Your throat is sand. You need water — a well, an oasis, a river."); } }
   else { player.thirst=Math.min(100,player.thirst+4*dt); }  // recover thirst in cooler lands
   if(player.thirst<=0 && player.hp<=0) die("The desert took the last of your water, and then the rest of you.");
@@ -726,23 +729,55 @@ function drawHouse(){ const th=houseTheme; const wall=th==="mud"?"#3a2c18":th===
   px(266,92,22,32,"#2a1c10"); px(266,92,22,3,"#3a2a1a"); px(282,108,2,2,C.gold);
   sprPlayer(player.x,player.y,player.dir,player.phase,false);
   g.fillStyle=C.gold; g.font="7px 'Courier New',monospace"; g.textAlign="center"; g.fillText("bed — sleep",bx,by+28); g.fillText("door",277,H-6); g.textAlign="left"; }
-function drawPack(){ g.fillStyle="rgba(8,10,20,.96)"; g.fillRect(0,0,W,H);
-  g.textAlign="center"; g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("THE TRAVELLER'S PACK",W/2,12); g.textAlign="left";
-  // build the carried items as {icon, count} — symbols, not words
-  const L=[]; ["knife","axe","blade"].forEach(k=>{ if(belt[k]&&belt[k].dur>0)L.push({k:k==="knife"?"knife":k,n:belt[k].dur}); });
+const PACK_GEO={cols:5,rows:2,sz:40,gap:8,ox:(W-(5*40+4*8))/2,oy:26};
+const MENU_GEO={mw:158,my:104,rh:15,get mx(){return (W-158)/2;}};
+function packList(){ const L=[]; ["knife","axe","blade"].forEach(k=>{ if(belt[k]&&belt[k].dur>0)L.push({k,n:belt[k].dur}); });
   if(inv.bow)L.push({k:"bow",n:inv.arrows}); if(inv.candle)L.push({k:"candle"});
   if(inv.coat)L.push({k:"coat"}); if(inv.wraps)L.push({k:"wraps"});
   if(inv.shoes)L.push({k:"shoes"}); if(inv.food>0)L.push({k:"food",n:inv.food});
-  if(inv.medicine)L.push({k:"medicine"}); if(inv.map)L.push({k:"map"});
-  const cols=5,rows=2,sz=40,gap=8, gw=cols*sz+(cols-1)*gap, ox=(W-gw)/2, oy=26;
-  for(let i=0;i<cols*rows;i++){ const cx=ox+(i%cols)*(sz+gap), cy=oy+((i/cols)|0)*(sz+gap);
-    const it=L[i], on=!!it;
-    g.fillStyle=on?"#131c38":"#0b1024"; g.fillRect(cx,cy,sz,sz);
-    g.strokeStyle=on?"#3b56a8":"#1c2748"; g.lineWidth=1; g.strokeRect(cx+0.5,cy+0.5,sz-1,sz-1);
-    if(on){ icon(it.k,g,cx+sz/2-8*2,cy+sz/2-8*2,2);
-      if(it.n!=null){ g.fillStyle=C.gold; g.font="9px 'Courier New',monospace"; g.textAlign="right"; g.fillText(it.n,cx+sz-3,cy+sz-3); g.textAlign="left"; } } }
-  g.textAlign="center"; g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("✶ fragments of knowledge:  "+frags.size+" / "+FRAG_TOTAL,W/2,H-20);
-  g.fillStyle="#7d8ec9"; g.font="7px 'Courier New',monospace"; g.fillText("tap  ·  or press B to close",W/2,H-9); g.textAlign="left"; }
+  if(inv.medicine)L.push({k:"medicine"}); if(inv.map)L.push({k:"map"}); return L; }
+function actionsFor(k){
+  if(k==="coat")  return worn==="coat" ?[["Take it off","doff"]]:[["Wear the coat","wear-coat"]];
+  if(k==="wraps") return worn==="wraps"?[["Take them off","doff"]]:[["Wear the wraps","wear-wraps"]];
+  if(k==="food") return [["Eat","eat"]];
+  if(k==="medicine") return [["Use — mend a wound","heal"]];
+  if(k==="knife"||k==="axe"||k==="blade") return [["Equip","equip"]];
+  if(k==="map") return [["Open the map","map"]];
+  if(k==="bow"||k==="candle") return [["Look at it","info"]];
+  return []; }
+function packDo(id,item){
+  if(id==="wear-coat"){ worn="coat"; caption("You pull on the coat. Warm in the north — an oven in the south."); }
+  else if(id==="wear-wraps"){ worn="wraps"; caption("You wind on the pale desert wraps. Loose and light, made for the heat."); }
+  else if(id==="doff"){ worn=null; caption("You strip down to bare cloth."); }
+  else if(id==="eat"){ packSel=-1; useItem("food"); return; }
+  else if(id==="heal"){ if(player.hp>=player.maxHp) caption("You are unhurt. Save the medicine."); else { player.hp=Math.min(player.maxHp,player.hp+1); sfxChime(); flashT=0.3; caption("You dress the wound with leaf and root. A little life returns."); } }
+  else if(id==="equip"){ equipMelee(item.k); caption("Equipped: "+(weapon?weapon.name:item.k)+"."); }
+  else if(id==="map"){ packSel=-1; packOpen=false; inv.mapOpen=true; return; }
+  else if(id==="info"){ caption(item.k==="bow"?("Your bow — "+inv.arrows+" arrows. Never breaks. Tap distant foes to loose one."):"The candle never dies — your soul-light, a splinter of the moon."); }
+  setInv(); packSel=-1; }
+function packClick(x,y){ const L=packList();
+  if(packSel>=0 && packSel<L.length){ const item=L[packSel]; const acts=actionsFor(item.k).concat([["Close","close"]]);
+    const G=MENU_GEO,mh=acts.length*G.rh+6;
+    if(x>G.mx&&x<G.mx+G.mw&&y>G.my&&y<G.my+mh){ const idx=Math.floor((y-(G.my+3))/G.rh); if(idx>=0&&idx<acts.length){ if(acts[idx][1]==="close")packSel=-1; else packDo(acts[idx][1],item); } return; }
+    packSel=-1; return; }
+  const P=PACK_GEO;
+  for(let i=0;i<L.length;i++){ const cx=P.ox+(i%P.cols)*(P.sz+P.gap),cy=P.oy+((i/P.cols)|0)*(P.sz+P.gap); if(x>cx&&x<cx+P.sz&&y>cy&&y<cy+P.sz){ packSel=i; return; } }
+  packSel=-1; packOpen=false; }
+function drawPack(){ g.fillStyle="rgba(8,10,20,.96)"; g.fillRect(0,0,W,H);
+  g.textAlign="center"; g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("THE TRAVELLER'S PACK",W/2,12); g.textAlign="left";
+  const L=packList(),P=PACK_GEO;
+  for(let i=0;i<P.cols*P.rows;i++){ const cx=P.ox+(i%P.cols)*(P.sz+P.gap),cy=P.oy+((i/P.cols)|0)*(P.sz+P.gap),it=L[i],on=!!it,sel=(i===packSel);
+    g.fillStyle=on?(sel?"#26356a":"#131c38"):"#0b1024"; g.fillRect(cx,cy,P.sz,P.sz);
+    g.strokeStyle=sel?C.gold:(on?"#3b56a8":"#1c2748"); g.lineWidth=1; g.strokeRect(cx+0.5,cy+0.5,P.sz-1,P.sz-1);
+    if(on){ icon(it.k,g,cx+4,cy+4,2);
+      if(it.n!=null){ g.fillStyle=C.gold; g.font="9px 'Courier New',monospace"; g.textAlign="right"; g.fillText(it.n,cx+P.sz-3,cy+P.sz-3); g.textAlign="left"; }
+      if((it.k==="coat"&&worn==="coat")||(it.k==="wraps"&&worn==="wraps")||it.k==="shoes"){ g.fillStyle=C.phos; g.beginPath(); g.arc(cx+P.sz-6,cy+6,2.5,0,6.28); g.fill(); } } }
+  if(packSel>=0&&packSel<L.length){ const item=L[packSel],acts=actionsFor(item.k).concat([["Close","close"]]),G=MENU_GEO,mh=acts.length*G.rh+6;
+    g.fillStyle="rgba(6,10,22,0.98)"; g.fillRect(G.mx,G.my,G.mw,mh); g.strokeStyle=C.gold; g.lineWidth=1; g.strokeRect(G.mx+0.5,G.my+0.5,G.mw-1,mh-1);
+    g.textAlign="left"; g.font="8px 'Courier New',monospace";
+    for(let i=0;i<acts.length;i++){ g.fillStyle=acts[i][1]==="close"?"#7d8ec9":C.phos; g.fillText("› "+acts[i][0],G.mx+8,G.my+3+i*G.rh+10); } }
+  else { g.textAlign="center"; g.fillStyle="#7d8ec9"; g.font="7px 'Courier New',monospace"; g.fillText("tap an item for choices  ·  B to close",W/2,H-9); }
+  g.textAlign="center"; g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("✶ knowledge:  "+frags.size+" / "+FRAG_TOTAL,W/2,H-20); g.textAlign="left"; }
 function drawEvil(){ g.save(); const a=0.22+Math.sin(T*1.7)*0.08; const gr=g.createRadialGradient(W/2,H/2,26,W/2,H/2,190); gr.addColorStop(0,"rgba(50,0,10,0)"); gr.addColorStop(1,"rgba(95,0,22,"+(0.5+a)+")"); g.fillStyle=gr; g.fillRect(0,0,W,H); g.strokeStyle="rgba(160,30,40,0.4)"; g.lineWidth=1; for(let i=0;i<16;i++){ const yy=((i*13)+ (T*45))%H, xx=((i*31)+ T*70)%W; g.beginPath(); g.moveTo(xx,yy); g.lineTo(xx-11,yy-3); g.stroke(); } g.restore(); }
 function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   if(rm.cars) for(const c of rm.cars) sprCar(c.x,c.y);
@@ -768,7 +803,7 @@ function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   if(rm.build) for(const b of rm.build) ents.push({y:b.y,d:()=>drawBuild(b.t,b.x,b.y)});
   for(const w of wildlife){ ents.push({y:w.y,d:()=>{ const dir=player.x<w.x?"left":"right"; if(w.t==="deer")sprDeer(w.x,w.y,dir); else if(w.t==="raven")sprRaven(w.x,w.y); else if(w.t==="horse")sprHorse(w.x,w.y,dir); else sprDeer(w.x,w.y,dir); }}); }
   for(const en of enemies){ if(en.dead)continue; ents.push({y:en.y,d:()=>{ if(en.hurt>0)g.globalAlpha=0.6; if(en.t==="wolf")sprWolf(en.x,en.y,en.dir,(en.phase|0)%2); else if(en.t==="human")sprHuman(en.x,en.y,en.dir,(en.phase|0)%2); else if(en.t==="bear")sprBear(en.x,en.y,en.dir,(en.phase|0)%2); else sprRanger(en.x,en.y,en.phase); g.globalAlpha=1; }}); }
-  const blink=player.inv>0&&((T*12)|0)%2; if(!blink) ents.push({y:player.y,d:()=>sprPlayer(player.x,player.y,player.dir,player.phase,inv.coat&&!B.hot)});
+  const blink=player.inv>0&&((T*12)|0)%2; if(!blink) ents.push({y:player.y,d:()=>sprPlayer(player.x,player.y,player.dir,player.phase,worn==="coat")});
   ents.sort((a,b)=>a.y-b.y); for(const e of ents)e.d();
   if(rm.fragment&&!rm.fragment.got) sprFragment(rm.fragment.x,rm.fragment.y);
   for(const a of arrows){ px(a.x-1,a.y-1,3,2,"#d8cdb0"); }
