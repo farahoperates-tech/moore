@@ -37,7 +37,7 @@
   @keyframes blink{50%{opacity:0}}
   .hud{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 12px;
     background:#0a1024;border-top:1px solid #16204a;font-size:11px;color:#7d8ec9;letter-spacing:.08em}
-  .inv{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .inv{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;flex-shrink:0}
   .inv .slot{width:26px;height:26px;border:1px solid #263468;border-radius:4px;background:#0c1330;
     display:flex;align-items:center;justify-content:center;image-rendering:pixelated;position:relative;opacity:.3}
   .inv .slot.have{opacity:1;border-color:#3b56a8}
@@ -150,7 +150,7 @@ let capFull="",capShown=0,capT=0,onCapDone=null;
 function caption(text,opt){ capFull=text; capShown=0; capT=0; onCapDone=(opt&&opt.cb)||null;
   capEl.className="cap"+((opt&&opt.voice)?" voice":"")+((opt&&opt.snark)?" snark":""); }
 function capDone(){ return capShown>=capFull.length; }
-function updateCap(dt){ if(capShown<capFull.length){ capT+=dt; while(capT>1/44&&capShown<capFull.length){capT-=1/44;capShown++;if(capFull[capShown-1]!==" ")tone(1400,1400,0.01,0,"square",0.012);} capEl.textContent=capFull.slice(0,capShown); if(capShown>=capFull.length&&onCapDone){const c=onCapDone;onCapDone=null;c();} } }
+function updateCap(dt){ if(capShown<capFull.length){ capT+=dt; while(capT>1/26&&capShown<capFull.length){capT-=1/26;capShown++;if(capFull[capShown-1]!==" ")tone(1400,1400,0.01,0,"square",0.012);} capEl.textContent=capFull.slice(0,capShown); if(capShown>=capFull.length&&onCapDone){const c=onCapDone;onCapDone=null;c();} } }
 
 // ---------- sprites ----------
 function sprPlayer(x,y,dir,phase,coat){ const P=(a,b,w,h,col)=>{g.fillStyle=col;g.fillRect((x+a)|0,(y+b)|0,w,h);};
@@ -233,7 +233,17 @@ function drawPrecip(kind,t,north){
 }
 
 // ---------- state ----------
-let scene={mode:"boot"}, T=0;
+let scene={mode:"boot"}, T=0, dayClock=38; const CYCLE=150;
+function sunNow(){ const p=(dayClock%CYCLE)/CYCLE; return Math.max(0,(Math.sin(p*Math.PI*2)*0.5+0.5))*0.9; } // 0 night .. ~0.9 noon (dying sun never full)
+const DWELL=[
+  "The dweller says: 'Go north when the wind does, and not before.'",
+  "'The ancients named themselves twice — the wise, the wise — as if saying it made it so.'",
+  "'They kept slabs of light in their pockets and pressed them to their faces to feel less alone.'",
+  "'The moon was the door. Someone left it open, and everything fell out.'",
+  "'I have said this before. You have heard it before. We are both very tired.'",
+  "'They cured every sickness and ended every war — and then a stranger admired their moon.'",
+  "'Banana,' it says, with great seriousness. You do not know this word.",
+  "'Beware the summer east,' it whispers. It is not summer. It is never summer now.'"];
 const player={x:270,y:120,tx:270,ty:120,dir:"left",moving:false,phase:0,stepT:0,warmth:100,hunger:100,hp:3,maxHp:3,inv:0,atkCd:0,attackT:0,entryGrace:0};
 const inv={candle:false,candleLit:false,coat:false,shoes:false,map:false,mapOpen:false,food:1,bow:false,arrows:0};
 const belt={knife:null,axe:null,blade:null}; let eqKey="knife";
@@ -254,7 +264,7 @@ const R=[
  {b:"autumn",name:"ASIA · THE TAIGA HEART", exits:{n:1,e:2,s:3,w:4},
   enter:"You wake standing, grown, wearing blood that is not yours. Taiga in every direction. Something in you says: move.",
   trees:seededTrees(9,11,BIOME.autumn,clearEdges), bush:[{x:120,y:150,ber:1},{x:210,y:70,ber:1,k:"apple"},{x:80,y:90,ber:1,k:"mush"}], fires:[],
-  wild:[{t:"deer",x:180,y:120},{t:"raven",x:90,y:60}], enemies:[] },
+  dweller:{x:56,y:120}, wild:[{t:"deer",x:180,y:120},{t:"raven",x:90,y:60}], enemies:[] },
  {b:"frost",name:"ASIA · THE BIRCH ROAD", exits:{s:0,e:5,n:9},
   enter:"Birches like white bones. The road bends north — and the cold begins to have opinions.",
   trees:seededTrees(11,22,BIOME.frost,clearEdges), bush:[{x:150,y:150,ber:1},{x:90,y:90,ber:1,k:"apple"}], fires:[{x:70,y:130,lit:0}],
@@ -271,24 +281,24 @@ const R=[
   wild:[{t:"raven",x:80,y:70},{t:"raven",x:230,y:90}], enemies:[{t:"wolf",x:150,y:150}] },
  {b:"sea",name:"ASIA · THE DROWNED SHORE", exits:{e:0,n:8}, sea:1,
   enter:"Grey water to the edge of the world. Cities sleep beneath it. A figure stands at the tideline, saying nothing, pointing out at the waves.",
-  trees:seededTrees(4,55,BIOME.sea,(x,y)=>y>120||clearEdges(x,y)), dweller:{x:150,y:118}, fires:[{x:60,y:80,lit:0}],
+  trees:seededTrees(4,55,BIOME.sea,(x,y)=>y>120||clearEdges(x,y)), dweller:{x:150,y:118,say:"'The Warming took them,' it says. 'They built walls against the sea. The sea was patient.'"}, fires:[{x:60,y:80,lit:0}],
   wild:[{t:"raven",x:200,y:60}], enemies:[] },
  {b:"winter",name:"ASIA · TVER RUINS", exits:{s:2,w:1,e:6},
   enter:"A town the snow is eating. Doorways to nothing. The soulless still walk their old streets.",
   trees:seededTrees(5,66,BIOME.winter,clearEdges), cars:[{x:100,y:150}], tower:{x:230,y:120}, fires:[{x:150,y:90,lit:0}],
-  wild:[], enemies:[{t:"wolf",x:200,y:70},{t:"human",x:120,y:120}] },
+  bush:[{x:60,y:80,ber:1,k:"apple"}], dweller:{x:250,y:150}, wild:[], enemies:[{t:"wolf",x:200,y:70},{t:"human",x:120,y:120}] },
  {b:"cave",name:"ASIA · THE CAVE (OLD ARMORY)", exits:{w:2,s:5}, cave:1,
   enter:"Out of the wind at last — a cave, and warm. Old hands cached weapons here for whoever came next: a bow, and a long blade of star-metal. Take them.",
   trees:[], blade:{x:110,y:130}, bow:{x:210,y:105}, slab:{x:150,y:66,say:"Scratched into the rock: names, thousands of them, and one line — 'we were here, we were kind, at the end.'"},
   wild:[], enemies:[] },
  {b:"winter",name:"ASIA · THE FROZEN RIVER", exits:{e:3}, river:1,
   enter:"A river gone to iron. Something huge drinks at a crack in the ice. It lifts its head. It has seen you.",
-  trees:seededTrees(6,77,BIOME.winter,clearEdges), fires:[{x:250,y:90,lit:0}],
+  trees:seededTrees(6,77,BIOME.winter,clearEdges), fires:[{x:250,y:90,lit:0}], bush:[{x:60,y:70,ber:1,k:"apple"}],
   wild:[], enemies:[{t:"bear",x:130,y:120}] },
  {b:"steppe",name:"ASIA · THE STEPPE EDGE", exits:{s:4,e:9}, steppe:1,
   enter:"The forest gives out. Grass to forever, wind that never stops. Wild horses run from you. Eagles read the sky.",
   trees:seededTrees(3,88,BIOME.steppe,clearEdges), fires:[],
-  wild:[{t:"horse",x:120,y:110},{t:"horse",x:170,y:130},{t:"raven",x:220,y:60}], enemies:[{t:"wolf",x:230,y:150}] },
+  bush:[{x:60,y:150,ber:1},{x:250,y:90,ber:1,k:"mush"}], dweller:{x:150,y:70}, wild:[{t:"horse",x:120,y:110},{t:"horse",x:170,y:130},{t:"raven",x:220,y:60}], enemies:[{t:"wolf",x:230,y:150}] },
  {b:"mtn",name:"ASIA · THE APPROACH", exits:{s:1,w:8,n:10}, scent:1, guard:1,
   enter:"The land climbs and whitens. Something antlered with light stands in the pass north — and it will not suffer a fool to pass.",
   trees:seededTrees(5,99,BIOME.mtn,clearEdges), fires:[{x:250,y:150,lit:0}],
@@ -334,7 +344,7 @@ function click(x,y){
   if(rm.bow && !rm.bow.got && Math.hypot(x-rm.bow.x,y-rm.bow.y)<16){ walkTo(rm.bow.x,rm.bow.y+10,()=>{rm.bow.got=1;inv.bow=true;inv.arrows+=12;setInv();caption("A bow, and a quiver. Tap a distant foe to loose an arrow.");}); return; }
   if(rm.bush) for(const bs of rm.bush){ if(bs.ber && Math.hypot(x-bs.x,y-bs.y)<16){ walkTo(bs.x,bs.y+10,()=>{bs.ber=0;inv.food++;setInv();caption(bs.k==="apple"?"Frozen apples, hard as stone but sweet.":bs.k==="mush"?"Pale mushrooms. Probably fine.":"Bitter berries. Saved for a hungrier hour.");}); return; } }
   if(rm.slab && Math.hypot(x-rm.slab.x,y-rm.slab.y)<18){ walkTo(rm.slab.x,rm.slab.y+12,()=>caption(rm.slab.say)); return; }
-  if(rm.dweller && Math.hypot(x-rm.dweller.x,y-rm.dweller.y)<18){ walkTo(rm.dweller.x+16,rm.dweller.y+8,()=>caption(knowledge?"The dweller turns. 'The Warming took them,' it says. 'The sea was patient.'":"The dweller only points at the water. It has no words for you. Not yet.")); return; }
+  if(rm.dweller && Math.hypot(x-rm.dweller.x,y-rm.dweller.y)<18){ walkTo(rm.dweller.x+16,rm.dweller.y+8,()=>caption(!knowledge?"The dweller only watches you, and points. It has no words for you — not until you understand.":(rm.dweller.say||DWELL[Math.floor(Math.random()*DWELL.length)]))); return; }
   if(rm.shrine && Math.hypot(x-rm.shrine.x,y-rm.shrine.y)<22){ walkTo(rm.shrine.x+18,rm.shrine.y+8,()=>takeKnowledge()); return; }
   walkTo(x,y);   // just walk — reaching an edge auto-travels
 }
@@ -354,9 +364,11 @@ function attack(){
 }
 function shoot(tx,ty){ if(!inv.bow||inv.arrows<=0||player.atkCd>0)return; player.atkCd=0.4; inv.arrows--; setInv(); sfxBow();
   const a=Math.atan2(ty-player.y,tx-player.x); arrows.push({x:player.x,y:player.y,vx:Math.cos(a)*170,vy:Math.sin(a)*170,life:1.4}); }
-function killEnemy(en){ en.dead=1; xp+=en.t==="ranger"?5:en.t==="bear"?3:1;
+function killEnemy(en){
+  if(en.t==="ranger" && !gateOpen){ en.hp=6; en.hurt=0.3; en.x+=(en.x<player.x?-10:10); caption("You strike it down — but it reforms from the light. It cannot fall until you have walked all of Asia and the wind turns north."); return; }
+  en.dead=1; xp+=en.t==="ranger"?5:en.t==="bear"?3:1;
   const drop={wolf:1,bear:4,deer:2,human:0,ranger:0}[en.t]||0; if(drop>0){ inv.food+=drop; }
-  if(en.t==="ranger") caption("The guardian folds into light. But the pass north is still sealed to you.");
+  if(en.t==="ranger") caption("The guardian steps aside. The wind is with you now. Go north.");
   else if(en.t==="bear") caption("The great bear falls — a feast of meat. The river is yours to cross.");
   else if(drop>0) caption("You take the meat. Food for the cold road."); setInv(); }
 function lightFire(f){ if(!inv.candleLit){caption("Nothing to light it with.");return;} f.lit=1; sfxLight(); caption("The fire catches. Warmth. Stand close and thaw."); }
@@ -421,7 +433,7 @@ function moveToward(dt){ const dx=player.tx-player.x,dy=player.ty-player.y,d=Mat
   } else { player.moving=false; if(player.arriveCb){const cb=player.arriveCb;player.arriveCb=null;cb();} } }
 
 function update(dt){
-  T+=dt; flick=0.86+Math.sin(T*11)*0.06+Math.random()*0.04; if(flashT>0)flashT-=dt;
+  T+=dt; dayClock+=dt; flick=0.86+Math.sin(T*11)*0.06+Math.random()*0.04; if(flashT>0)flashT-=dt;
   updateCap(dt); player.atkCd=Math.max(0,player.atkCd-dt); player.attackT=Math.max(0,player.attackT-dt); player.inv=Math.max(0,player.inv-dt);
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.life<=0)parts.splice(i,1);}
   if(fadeDir!==0){ fade+=fadeDir*dt*1.7; if(fade>=1){fade=1;if(fadeCb){const c=fadeCb;fadeCb=null;c();}fadeDir=-1;} else if(fade<=0){fade=0;fadeDir=0;} }
@@ -434,17 +446,19 @@ function update(dt){
   moveToward(dt); candleR=Math.min(58,candleR+120*dt);
   // walk to any edge that has a way, and be carried through
   if(player.entryGrace>0) player.entryGrace-=dt;
-  else if(capDone()){ const ex=rm.exits;
-    if(ex.w!=null && player.x<=8){ travel("w"); return; }
-    if(ex.e!=null && player.x>=W-8){ travel("e"); return; }
-    if(ex.n!=null && player.y<=48){ travel("n"); return; }
-    if(ex.s!=null && player.y>=H-9){ travel("s"); return; } }
+  else if(capDone()){ const ex=rm.exits;   // only the marked opening (mid-edge) is a way through
+    if(ex.w!=null && player.x<=8 && Math.abs(player.y-H/2)<24){ travel("w"); return; }
+    if(ex.e!=null && player.x>=W-8 && Math.abs(player.y-H/2)<24){ travel("e"); return; }
+    if(ex.n!=null && player.y<=48 && Math.abs(player.x-W/2)<28){ travel("n"); return; }
+    if(ex.s!=null && player.y>=H-9 && Math.abs(player.x-W/2)<28){ travel("s"); return; } }
   // survival
   let nearFire=false; if(rm.fires) for(const f of rm.fires){ if(f.lit && Math.hypot(player.x-f.x,player.y-f.y)<44) nearFire=true; }
-  if(B.cold<0){ player.warmth=Math.min(100,player.warmth+ -B.cold*dt); } // cave warms you
-  else if(nearFire){ player.warmth=Math.min(100,player.warmth+15*dt); }
-  else { player.warmth-=B.cold*(inv.coat?0.55:1)*dt; }
-  player.hunger-=0.7*dt;
+  const sun=sunNow(); const gear=(inv.coat?0.42:1)*(inv.shoes?0.8:1);   // coat+boots ≈ a third of the cold
+  if(B.cold<0){ player.warmth=Math.min(100,player.warmth+ -B.cold*dt); }               // cave warms you
+  else if(nearFire){ player.warmth=Math.min(100,player.warmth+16*dt); }                 // fire warms
+  else if(sun>0.6 && rm.b!=="cave"){ player.warmth=Math.min(100,player.warmth+(sun-0.55)*7*dt); } // midday sun warms
+  else { player.warmth-=B.cold*gear*(1-sun*0.5)*dt; }                                    // cold, softened by gear + daylight
+  player.hunger-=0.55*dt;
   if(player.hunger<=0){ player.hunger=0; player.hp-=dt*0.4; }
   if(player.warmth<=0){ player.warmth=0; die("The cold has you. You stop shivering — that is the dangerous part."); }
 
@@ -489,6 +503,10 @@ function drawGround(B,rm){ px(0,0,W,H,B.g0);
   if(rm.river){ for(let y=90;y<140;y+=3)px(0,y,W,2,y%6<3?"#3a4658":"#2e3a48"); for(let i=0;i<8;i++)px(rn()*W,92+rn()*44,4,1,C.ice); }
 }
 function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
+  if(!rm.cave){ const p=(dayClock%CYCLE)/CYCLE, day=p<0.5, sx=W*((day?p:(p-0.5))/0.5), sy=52-Math.sin((day?p:(p-0.5))/0.5*Math.PI)*30;
+    g.save(); g.globalCompositeOperation="lighter"; const col=day?"rgba(255,200,120,":"rgba(180,200,240,"; const s=sunNow();
+    const gg=g.createRadialGradient(sx,sy,0,sx,sy,26); gg.addColorStop(0,col+(0.28+ (day?s:0.2)*0.4)+")"); gg.addColorStop(1,col+"0)"); g.fillStyle=gg; g.fillRect(sx-26,sy-26,52,52);
+    g.fillStyle=day?"#ffcf8a":"#cdd8f0"; g.fillRect(sx-4,sy-4,8,8); g.restore(); }
   if(rm.cars) for(const c of rm.cars) sprCar(c.x,c.y);
   if(rm.tower) sprTower(rm.tower.x,rm.tower.y);
   if(rm.slab) sprSlab(rm.slab.x,rm.slab.y);
@@ -513,18 +531,19 @@ function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   for(const m of motes){ g.globalAlpha=Math.min(0.7,m.life); px(m.x,m.y,1,1,C.spirit); g.globalAlpha=1; }
   for(const p of parts){ g.globalAlpha=Math.max(0,p.life/p.max); px(p.x-1,p.y-1,2,2,p.c); } g.globalAlpha=1;
   drawPrecip(B.precip,T,windNorth);
-  // exit arrows glimmer
-  const ex=rm.exits; g.globalAlpha=0.28+Math.sin(T*3)*0.16; g.fillStyle=windNorth&&ex.n!=null?C.gold:C.phos;
-  if(ex.n!=null){ if(windNorth)px(W/2-1,4,2,8,C.gold),px(W/2-3,8,6,2,C.gold); else px(W/2-2,4,4,3,C.phos); }
-  if(ex.s!=null)px(W/2-2,H-7,4,3,C.phos); if(ex.w!=null)px(3,H/2-2,3,4,C.phos); if(ex.e!=null)px(W-6,H/2-2,3,4,C.phos); g.globalAlpha=1;
-  if(ri===0 && !inv.map && ex.e!=null){ g.globalAlpha=0.6+Math.sin(T*4)*0.35; g.fillStyle=C.gold; px(W-12,H/2-1,7,2,C.gold); px(W-7,H/2-4,2,3,C.gold); px(W-7,H/2+1,2,3,C.gold); px(W-5,H/2-2,2,4,C.gold); g.globalAlpha=1; }
 }
 function sprCoatItem(x,y){ px(x-5,y+3,10,3,C.shadow); px(x-4,y-6,8,10,C.coat); px(x-4,y-6,8,3,C.coatH); px(x-1,y-5,2,9,"#3a251a"); }
 function sprShoesItem(x,y){ px(x-5,y+2,10,2,C.shadow); px(x-5,y-1,4,4,"#3a2a1c"); px(x+1,y-1,4,4,"#3a2a1c"); px(x-5,y+2,4,1,"#20130b"); px(x+1,y+2,4,1,"#20130b"); }
 function sprMapItem(x,y){ px(x-5,y+2,10,2,C.shadow); px(x-5,y-6,10,9,"#c9b78a"); px(x-5,y-6,10,2,"#ddc99a"); px(x-3,y-3,6,1,"#7a6a44"); px(x-1,y-6,1,9,"#7a6a44"); px(x+2,y-2,1,1,C.blood); }
 function sprBladeItem(x,y){ px(x-4,y+3,8,2,C.shadow); px(x-1,y-11,2,15,"#cfe0ff"); px(x-1,y-11,1,15,"#eef4ff"); px(x-3,y+2,6,2,C.goldD); px(x-1,y+4,2,3,C.trunk); }
 function drawBeacons(){ const rm=R[ri],by=Math.sin(T*4)*2; const spark=(x,y)=>{ g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(x,y-13+by,0,x,y-13+by,10); gr.addColorStop(0,"rgba(255,207,92,.5)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(x-10,y-23+by,20,20); g.fillStyle=C.gold; g.fillRect(x-1,y-16+by,2,6); g.fillRect(x-3,y-13+by,6,2); g.restore(); };
-  for(const key of ["axe","bow","coat","shoes","map","blade"]){ const it=rm[key]; if(it&&!it.got)spark(it.x,it.y); } }
+  for(const key of ["axe","bow","coat","shoes","map","blade"]){ const it=rm[key]; if(it&&!it.got)spark(it.x,it.y); }
+  // exit OPENINGS — only the mid-edge is a way through; glows over the dark
+  const ex=rm.exits, pulse=0.35+Math.sin(T*3)*0.22;
+  const opening=(mx,my,gold)=>{ g.save(); g.globalCompositeOperation="lighter"; g.globalAlpha=pulse;
+    const c=gold?"rgba(255,207,92,":"rgba(127,240,176,"; const gr=g.createRadialGradient(mx,my,0,mx,my,17); gr.addColorStop(0,c+"0.75)"); gr.addColorStop(1,c+"0)"); g.fillStyle=gr; g.fillRect(mx-17,my-17,34,34); g.restore(); };
+  if(ex.n!=null)opening(W/2,47,windNorth); if(ex.s!=null)opening(W/2,H-7,false);
+  if(ex.w!=null)opening(6,H/2,false); if(ex.e!=null)opening(W-6,H/2, ri===0&&!inv.map); }
 function drawMap(){ g.fillStyle="rgba(8,10,20,.93)"; g.fillRect(0,0,W,H);
   g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.textAlign="center"; g.fillText("- THE MAP (what you have seen) -",W/2,12);
   const ox=68,oy=46,cw=46,ch=32;
@@ -570,7 +589,7 @@ function render(){
     for(let i=0;i<L.length;i++)g.fillText(L[i],14,28+i*12); if(Math.floor(T*2)%2===0){g.fillStyle=C.gold;g.fillText("> CLICK / ANY KEY TO BE BORN",14,28+7*12);} return; }
   if(scene.mode==="san"){ drawSan(); applyDark(inv.candleLit?0.86:0.985); if(scene.step===1&&!inv.candleLit)drawArrow(); if(scene.step===2&&!inv.candleLit)drawItems();
     if(scene.step===3){ const dx=40,dy=100,by=Math.sin(T*4)*3; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(dx,dy,0,dx,dy,24); gr.addColorStop(0,"rgba(255,207,92,.6)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(dx-24,dy-24,48,48); g.fillStyle=C.gold; px(dx+16+by,dy-1,7,2,C.gold); px(dx+16+by,dy-4,2,3,C.gold); px(dx+16+by,dy+1,2,3,C.gold); px(dx+14+by,dy-2,2,4,C.gold); g.restore(); } }
-  else if(scene.mode==="play"){ drawScene(); applyDark(BIOME[R[ri].b].dark); drawFrost(); drawBeacons(); drawAlerts(); drawHUD(); }
+  else if(scene.mode==="play"){ drawScene(); const B2=BIOME[R[ri].b]; const dk=R[ri].b==="cave"?B2.dark:Math.max(0.32,B2.dark*(1-sunNow()*0.62)); applyDark(dk); drawFrost(); drawBeacons(); drawAlerts(); drawHUD(); }
   else if(scene.mode==="end"){ drawScene(); applyDark(0.5); drawHUD(); g.fillStyle="rgba(5,10,7,.5)"; g.fillRect(0,0,W,H); g.textAlign="center"; g.fillStyle=C.gold; g.font="10px 'Courier New',monospace"; g.fillText("KNOWLEDGE",W/2,84); g.fillStyle=C.spirit; g.font="7px 'Courier New',monospace"; g.fillText("the world boots up",W/2,98); g.textAlign="left"; }
   if(inv.mapOpen && scene.mode==="play") drawMap();
   if(flashT>0){ g.fillStyle="rgba(220,240,255,"+Math.min(1,flashT)+")"; g.fillRect(0,0,W,H); }
