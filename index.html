@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v15 · greater asia";
+const W=320,H=200, BUILD="v16 · day & night";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -239,7 +239,7 @@ function drawPrecip(kind,t,north){
 }
 
 // ---------- state ----------
-let scene={mode:"boot"}, T=0, dayClock=38; const CYCLE=150;
+let scene={mode:"boot"}, T=0, dayClock=22; const CYCLE=95;
 function sunNow(){ const p=(dayClock%CYCLE)/CYCLE; return Math.max(0,(Math.sin(p*Math.PI*2)*0.5+0.5))*0.9; } // 0 night .. ~0.9 noon (dying sun never full)
 const DWELL=[
   "The dweller says: 'Go north when the wind does, and not before.'",
@@ -518,6 +518,7 @@ function update(dt){
   if(B.hot){ player.thirst-=B.hot*(0.6+sun*0.8)*dt; if(player.thirst<=0){ player.thirst=0; player.hp-=dt*0.4; if(Math.random()<dt) caption("Your throat is sand. You need water — a well, an oasis."); } }
   else { player.thirst=Math.min(100,player.thirst+4*dt); }  // recover thirst in cooler lands
   if(player.thirst<=0 && player.hp<=0) die("The desert took the last of your water, and then the rest of you.");
+  { const dnow=sun>0.5; if(player._wasDay===undefined)player._wasDay=dnow; else if(dnow!==player._wasDay&&capDone()) caption(dnow?"Dawn. The sun climbs over the dead world — and the dark pulls back.":"Night falls. The cold leans in, and the candle is all you have."); player._wasDay=dnow; }
   if(player.hunger<=0){ player.hunger=0; player.hp-=dt*0.4; }
   if(player.warmth<=0){ player.warmth=0; die("The cold has you. You stop shivering — that is the dangerous part."); }
 
@@ -574,10 +575,10 @@ function sprPalace(x,y){ px(x-16,y+7,32,3,C.shadow); px(x-16,y-14,32,21,"#3a4658
 function sprWell(x,y){ px(x-6,y+4,12,3,C.shadow); px(x-6,y-2,12,6,"#4a5162"); px(x-6,y-2,12,2,"#5a6274"); g.fillStyle="#22384f"; g.beginPath(); g.arc(x,y,4,0,6.28); g.fill(); px(x-7,y-8,2,6,C.trunk); px(x+5,y-8,2,6,C.trunk); px(x-7,y-9,14,2,C.trunk); }
 function drawBuild(t,x,y){ ({ger:sprGer,wall:sprWall,pagoda:sprPagoda,dome:sprDome,cube:sprCube,shikhara:sprShikhara,crystal:sprCrystal,station:sprStation,palace:sprPalace}[t]||sprPagoda)(x,y); }
 function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
-  if(!rm.cave){ const p=(dayClock%CYCLE)/CYCLE, day=p<0.5, sx=W*((day?p:(p-0.5))/0.5), sy=52-Math.sin((day?p:(p-0.5))/0.5*Math.PI)*30;
-    g.save(); g.globalCompositeOperation="lighter"; const col=day?"rgba(255,200,120,":"rgba(180,200,240,"; const s=sunNow();
-    const gg=g.createRadialGradient(sx,sy,0,sx,sy,26); gg.addColorStop(0,col+(0.28+ (day?s:0.2)*0.4)+")"); gg.addColorStop(1,col+"0)"); g.fillStyle=gg; g.fillRect(sx-26,sy-26,52,52);
-    g.fillStyle=day?"#ffcf8a":"#cdd8f0"; g.fillRect(sx-4,sy-4,8,8); g.restore(); }
+  if(!rm.cave){ const p=(dayClock%CYCLE)/CYCLE, day=p<0.5, fr=(day?p:(p-0.5))/0.5, sx=20+fr*(W-40), sy=48-Math.sin(fr*Math.PI)*32;
+    g.save(); g.globalCompositeOperation="lighter"; const col=day?"rgba(255,200,120,":"rgba(190,205,240,";
+    const gg=g.createRadialGradient(sx,sy,0,sx,sy,44); gg.addColorStop(0,col+"0.75)"); gg.addColorStop(1,col+"0)"); g.fillStyle=gg; g.fillRect(sx-44,sy-44,88,88);
+    g.fillStyle=day?"#ffe0a0":"#dfe7f5"; g.beginPath(); g.arc(sx,sy,7,0,6.28); g.fill(); g.restore(); }
   if(rm.cars) for(const c of rm.cars) sprCar(c.x,c.y);
   if(rm.tower) sprTower(rm.tower.x,rm.tower.y);
   if(rm.slab) sprSlab(rm.slab.x,rm.slab.y);
@@ -664,7 +665,9 @@ function render(){
     g.fillStyle="#3f9a6a"; g.fillText("build "+BUILD+"  (if this isn't the latest, hard-refresh: Cmd+Shift+R)",14,H-16); return; }
   if(scene.mode==="san"){ drawSan(); applyDark(inv.candleLit?0.86:0.985); if(scene.step===1&&!inv.candleLit)drawArrow(); if(scene.step===2&&!inv.candleLit)drawItems();
     if(scene.step===3){ const dx=40,dy=100,by=Math.sin(T*4)*3; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(dx,dy,0,dx,dy,24); gr.addColorStop(0,"rgba(255,207,92,.6)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(dx-24,dy-24,48,48); g.fillStyle=C.gold; px(dx+16+by,dy-1,7,2,C.gold); px(dx+16+by,dy-4,2,3,C.gold); px(dx+16+by,dy+1,2,3,C.gold); px(dx+14+by,dy-2,2,4,C.gold); g.restore(); } }
-  else if(scene.mode==="play"){ drawScene(); const B2=BIOME[R[ri].b]; const dk=R[ri].b==="cave"?B2.dark:Math.max(0.32,B2.dark*(1-sunNow()*0.62)); applyDark(dk); drawFrost(); drawBeacons(); drawAlerts(); drawHUD(); }
+  else if(scene.mode==="play"){ drawScene(); const B2=BIOME[R[ri].b]; const s=sunNow(); const dk=R[ri].b==="cave"?B2.dark:Math.max(0.06,B2.dark*(1-s*0.92)); applyDark(dk);
+    if(R[ri].b!=="cave"&&s>0.45){ g.save(); g.globalCompositeOperation="lighter"; g.globalAlpha=(s-0.45)*0.5; g.fillStyle=R[ri].hot?"#ffcf8a":"#9fc0e0"; g.fillRect(0,0,W,H); g.restore(); } // daylight wash
+    drawFrost(); drawBeacons(); drawAlerts(); drawHUD(); }
   else if(scene.mode==="end"){ drawScene(); applyDark(0.5); drawHUD(); g.fillStyle="rgba(5,10,7,.5)"; g.fillRect(0,0,W,H); g.textAlign="center"; g.fillStyle=C.gold; g.font="10px 'Courier New',monospace"; g.fillText("KNOWLEDGE",W/2,84); g.fillStyle=C.spirit; g.font="7px 'Courier New',monospace"; g.fillText("the world boots up",W/2,98); g.textAlign="left"; }
   if(inv.mapOpen && scene.mode==="play") drawMap();
   if(flashT>0){ g.fillStyle="rgba(220,240,255,"+Math.min(1,flashT)+")"; g.fillRect(0,0,W,H); }
