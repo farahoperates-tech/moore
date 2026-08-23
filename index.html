@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v16 · day & night";
+const W=320,H=200, BUILD="v17 · the levant";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -142,6 +142,7 @@ function sfxBear(){ tone(120,60,0.6,0,"sawtooth",0.2); tone(90,50,0.7,0.12,"sawt
 function sfxChime(){ tone(560,840,0.2,0,"triangle",0.1); tone(840,1200,0.25,0.14,"triangle",0.09); tone(1200,1600,0.3,0.3,"triangle",0.08); }
 function sfxBreak(){ noise(0.2,0,3000,0.25,"highpass"); tone(400,120,0.15,0,"square",0.1); }
 function sfxAlert(t){ tone(760,1200,0.1,0,"square",0.13); if(t==="wolf")setTimeout(()=>sfxWolf(),110); if(t==="bear")setTimeout(()=>sfxBear(),110); }
+function sfxEvil(){ tone(70,58,1.3,0,"sawtooth",0.11); tone(73,60,1.3,0,"sawtooth",0.08); tone(104,96,1.3,0.1,"sawtooth",0.05); }
 function heartbeat(){ tone(70,42,0.16,0,"sine",0.2); tone(66,40,0.16,0.2,"sine",0.15); }
 function windStart(){ if(muted||!actx()||windNode)return; const n=ac.sampleRate*2,b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);
   for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*0.5; windNode=ac.createBufferSource(); windNode.buffer=b; windNode.loop=true;
@@ -250,6 +251,12 @@ const DWELL=[
   "'They cured every sickness and ended every war — and then a stranger admired their moon.'",
   "'Banana,' it says, with great seriousness. You do not know this word.",
   "'Beware the summer east,' it whispers. It is not summer. It is never summer now.'"];
+const EVILWIND=[
+  "The wind here is wrong. It moves against itself, and it is warm where it should be cold.",
+  "Something in the wind knows the shape of you. It has waited a long time to.",
+  "You hear it before you understand it — a voice with no mouth, saying a name you almost know.",
+  "The air tastes of iron and old grief. Something evil first learned patience in this place.",
+  "Do not listen to the wind. (You are already listening.)"];
 const player={x:270,y:120,tx:270,ty:120,dir:"left",moving:false,phase:0,stepT:0,warmth:100,hunger:100,thirst:100,hp:3,maxHp:3,inv:0,atkCd:0,attackT:0,entryGrace:0};
 const inv={candle:false,candleLit:false,coat:false,shoes:false,map:false,mapOpen:false,food:1,bow:false,arrows:0};
 const belt={knife:null,axe:null,blade:null}; let eqKey="knife";
@@ -258,7 +265,7 @@ function autoEquip(){ for(const k of ["blade","axe","knife"]){ if(belt[k]&&belt[
 function equipMelee(k){ if(belt[k]&&belt[k].dur>0){ weapon=belt[k]; eqKey=k; } }
 function cycleMelee(){ const owned=["knife","axe","blade"].filter(k=>belt[k]&&belt[k].dur>0); if(owned.length<2){ caption(weapon?("Only your "+weapon.name+", "+weapon.dur+" strikes left."):"No blade. Find one."); return; } let i=owned.indexOf(eqKey); i=(i+1)%owned.length; equipMelee(owned[i]); caption("Equipped: "+weapon.name+"."); setInv(); }
 let enemies=[], wildlife=[], parts=[], motes=[], arrows=[];
-let visited=new Set(), gateOpen=false, gateStage=0, windNorth=false, gateHint=0;
+let visited=new Set(), gateOpen=false, gateStage=0, windNorth=false, gateHint=0, evilT=0;
 
 function seededTrees(n,seed,B,avoid){ let s=seed; const rn=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};
   const t=[]; let guard=0; while(t.length<n&&guard++<400){ const x=26+rn()*268,y=48+rn()*116;
@@ -299,7 +306,7 @@ const R=[
   wild:[], enemies:[] },
  {b:"winter",name:"ASIA · THE FROZEN RIVER", exits:{e:3}, river:1,
   enter:"A river gone to iron. Something huge drinks at a crack in the ice. It lifts its head. It has seen you.",
-  trees:seededTrees(6,77,BIOME.winter,clearEdges), fires:[{x:250,y:90,lit:0}], bush:[{x:60,y:70,ber:1,k:"apple"}],
+  trees:seededTrees(6,77,BIOME.winter,clearEdges), fires:[{x:250,y:90,lit:0}], bush:[{x:60,y:70,ber:1,k:"apple"}], water:[{x:160,y:150}],
   wild:[], enemies:[{t:"bear",x:130,y:120}] },
  {b:"steppe",name:"ASIA · THE STEPPE EDGE", exits:{s:4,e:9,w:11}, steppe:1,
   enter:"The forest gives out. Grass to forever, wind that never stops. Wild horses run from you. Eagles read the sky.",
@@ -341,7 +348,7 @@ const R=[
   enter:"A round temple where emperors once begged the sky for good harvests. The sky stopped listening long ago — it had gone to the moon. But old weapons endured here, and quiet.",
   trees:seededTrees(2,207,BIOME.winter,clearEdges), build:[{t:"pagoda",x:150,y:100}], blade:{x:108,y:132}, fires:[{x:224,y:140,lit:0}], slab:{x:58,y:80,say:"'They asked heaven for rain. Heaven, it turns out, had already left.'"},
   wild:[], enemies:[] },
- {b:"dune",name:"ARABIA · THE EMPTY QUARTER", exits:{n:16,s:19}, hot:1,
+ {b:"dune",name:"ARABIA · THE EMPTY QUARTER", exits:{n:16,s:19,w:23}, hot:1,
   enter:"The Rub' al Khali — the Empty Quarter. The largest sand-sea on earth, emptier now than its name ever dreamed. Heat like a hand laid on your throat.",
   trees:[], build:[], water:[{x:250,y:150}], dune:1,
   wild:[{t:"raven",x:80,y:60}], fires:[], enemies:[{t:"human",x:150,y:110}] },
@@ -360,10 +367,22 @@ const R=[
  {b:"cave",name:"THE DEEP", exits:{n:21}, cave:1,
   enter:"The bottom of everything. The crystals pulse like a slow heart. Someone left a blade down here — and something else has been waiting inside the dark for it.",
   trees:[], build:[{t:"crystal",x:80,y:100},{t:"crystal",x:232,y:120}], blade:{x:150,y:120},
-  wild:[], enemies:[{t:"bear",x:180,y:90}] }
+  wild:[], enemies:[{t:"bear",x:180,y:90}] },
+ {b:"dune",name:"AQABA · THE RED SEA GATE", exits:{e:18,n:24}, hot:1,
+  enter:"A drowned port on a red-gold sea. Rusted cranes lean like the necks of dead birds; a ship lies where the water abandoned it. But there is fresh water here — kneel and drink.",
+  trees:[], build:[{t:"port",x:120,y:120},{t:"skyscraper",x:224,y:132}], water:[{x:66,y:130}], dweller:{x:180,y:100}, dune:1,
+  wild:[{t:"raven",x:60,y:60}], enemies:[{t:"human",x:206,y:142}] },
+ {b:"desert",name:"PETRA · THE ROSE CITY", exits:{s:23,n:25}, hot:1,
+  enter:"Cut straight into a cliff of rose-red rock: a temple facade taller than memory. A people carved a whole city from stone here, traded the known world through it, and then simply were not. A spring still runs.",
+  trees:[], build:[{t:"petra",x:150,y:112},{t:"ruin",x:58,y:142}], water:[{x:240,y:150}], dweller:{x:100,y:120}, dune:1,
+  wild:[{t:"raven",x:224,y:60}], enemies:[{t:"human",x:206,y:100}] },
+ {b:"desert",name:"THE HOLY RUINS · PALESTINE", exits:{s:24}, hot:1, evil:1,
+  enter:"An old, holy, broken place — the heart of three faiths, and grief older than all of them. The wind here is WRONG. It moves against itself, warm where it should be cold — and something in it turns, slowly, to face you.",
+  trees:[], build:[{t:"dome",x:108,y:110},{t:"skyscraper",x:214,y:122},{t:"ruin",x:150,y:150}], water:[{x:60,y:138}], dweller:{x:180,y:88},
+  wild:[], enemies:[{t:"human",x:132,y:110}] }
 ];
-const EXPLORABLE=[0,1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,19,20];
-const MP=[[2,3],[2,2],[3,3],[2,4],[1,3],[4,3],[4,2],[1,4],[0,3],[2,1],[2,0],[0,4],[0,5],[1,5],[1,6],[2,5],[0,6],[2,6],[0,7],[0,8],[1,8],[5,2],[5,3]]; // rough map coords per room
+const EXPLORABLE=[0,1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,19,20,23,24,25];
+const MP=[[2,3],[2,2],[3,3],[2,4],[1,3],[4,3],[4,2],[1,4],[0,3],[2,1],[2,0],[0,4],[0,5],[1,5],[1,6],[2,5],[0,6],[2,6],[0,7],[0,8],[1,8],[5,2],[5,3],[3,7],[3,8],[4,8]]; // rough map coords per room
 let ri=0;
 
 // ---------- input ----------
@@ -449,6 +468,7 @@ function gotoRoom(i,from){ ri=i; const rm=R[i]; scene={mode:"play"}; placeEl.tex
   wildlife=(rm.wild||[]).map(w=>({t:w.t,x:w.x,y:w.y,ph:Math.random()*6,vx:0,vy:0,flee:0}));
   arrows=[]; parts=[]; motes=[];
   if(!muted) windStart(); setWind(BIOME[rm.b].cold>4?0.13:0.06);
+  if(rm.evil){ evilT=0; if(!muted) sfxEvil(); }
   candleR=Math.max(candleR,1);
   visited.add(i); checkGate();
   if(i===0 && !inv.map) hintEl.textContent="→ travel EAST — warmth & a map lie that way";
@@ -524,6 +544,7 @@ function update(dt){
 
   // gate nudge: after gate, if you wander a non-northern room, the terminal gets impatient
   if(gateOpen && ri!==9 && ri!==10){ gateHint+=dt; if(gateHint>14){ gateHint=0; if(capDone()) nudgeNorth(); } } else gateHint=0;
+  if(rm.evil){ evilT+=dt; if(evilT>8){ evilT=0; if(capDone()){ caption(EVILWIND[Math.floor(Math.random()*EVILWIND.length)]); if(!muted)sfxEvil(); } } }
 
   // enemies
   for(const en of enemies){ if(en.dead)continue; en.phase+=dt*4; en.hurt=Math.max(0,en.hurt-dt); en.cd=Math.max(0,en.cd-dt);
@@ -573,7 +594,12 @@ function sprCrystal(x,y){ px(x-6,y+4,12,3,C.shadow); g.save(); g.globalComposite
 function sprStation(x,y){ px(x-20,y+6,40,4,C.shadow); px(x-18,y-6,36,12,C.concreteD); px(x-18,y-6,36,3,"#5a6274"); for(let i=-16;i<16;i+=6)px(x+i,y-3,4,6,"#1a2028"); px(x-26,y-2,10,4,"#3a4658"); px(x+16,y-2,12,4,"#3a4658"); px(x-2,y-14,4,8,C.steel); g.save(); g.globalCompositeOperation="lighter"; g.globalAlpha=0.4+Math.sin(T*3)*0.3; px(x-1,y-14,2,2,C.ember); g.restore(); g.globalAlpha=1; }
 function sprPalace(x,y){ px(x-16,y+7,32,3,C.shadow); px(x-16,y-14,32,21,"#3a4658"); px(x-16,y-14,32,3,"#54708a"); for(let i=-14;i<14;i+=5)px(x+i,y-10,3,12,"#1a2233"); g.fillStyle="#54708a"; g.beginPath(); g.arc(x,y-14,9,Math.PI,0); g.fill(); px(x-1,y-30,2,7,C.gold); }
 function sprWell(x,y){ px(x-6,y+4,12,3,C.shadow); px(x-6,y-2,12,6,"#4a5162"); px(x-6,y-2,12,2,"#5a6274"); g.fillStyle="#22384f"; g.beginPath(); g.arc(x,y,4,0,6.28); g.fill(); px(x-7,y-8,2,6,C.trunk); px(x+5,y-8,2,6,C.trunk); px(x-7,y-9,14,2,C.trunk); }
-function drawBuild(t,x,y){ ({ger:sprGer,wall:sprWall,pagoda:sprPagoda,dome:sprDome,cube:sprCube,shikhara:sprShikhara,crystal:sprCrystal,station:sprStation,palace:sprPalace}[t]||sprPagoda)(x,y); }
+function sprSkyscraper(x,y){ px(x-16,y+7,34,4,C.shadow); px(x-8,y-46,16,52,C.concreteD); px(x-8,y-46,16,52,C.concrete); px(x-8,y-46,5,52,"#5a6274"); for(let j=0;j<12;j++)for(let i=0;i<3;i++)px(x-6+i*5,y-42+j*4,3,2,(i+j)%2?"#141a24":"#2a3240"); px(x-3,y-52,8,6,C.concreteD); px(x-15,y+1,32,6,"#3a2e1a"); }
+function sprRuin(x,y){ px(x-12,y+6,24,3,C.shadow); px(x-12,y-11,9,17,C.concreteD); px(x-12,y-11,9,3,C.concrete); px(x+1,y-6,9,12,C.concreteD); px(x+1,y-6,9,2,C.concrete); px(x-4,y-4,4,6,"#141a24"); for(let i=0;i<6;i++)px(x-14+i*5,y+2,3,3,"#3a3a40"); }
+function sprPetra(x,y){ px(x-18,y+7,36,4,C.shadow); px(x-20,y-40,40,46,"#6a3a2e"); px(x-20,y-40,40,4,"#7a4436"); px(x-14,y-30,28,36,"#7a4a38"); for(let i=-12;i<13;i+=6)px(x+i,y-28,3,32,"#c9a878"); g.fillStyle="#c9a878"; g.beginPath(); g.moveTo(x-15,y-28); g.lineTo(x,y-40); g.lineTo(x+15,y-28); g.closePath(); g.fill(); px(x-3,y-4,6,10,"#20130b"); }
+function sprPort(x,y){ px(x-14,y+6,28,3,C.shadow); px(x-14,y-4,20,10,C.rustD); px(x-14,y-4,20,3,C.rust); px(x-2,y-20,3,16,"#4a5162"); px(x-2,y-20,10,3,"#4a5162"); px(x+6,y-18,3,6,"#4a5162"); px(x+9,y-2,6,8,"#3a4658"); }
+function drawBuild(t,x,y){ ({ger:sprGer,wall:sprWall,pagoda:sprPagoda,dome:sprDome,cube:sprCube,shikhara:sprShikhara,crystal:sprCrystal,station:sprStation,palace:sprPalace,skyscraper:sprSkyscraper,ruin:sprRuin,petra:sprPetra,port:sprPort}[t]||sprPagoda)(x,y); }
+function drawEvil(){ g.save(); const a=0.22+Math.sin(T*1.7)*0.08; const gr=g.createRadialGradient(W/2,H/2,26,W/2,H/2,190); gr.addColorStop(0,"rgba(50,0,10,0)"); gr.addColorStop(1,"rgba(95,0,22,"+(0.5+a)+")"); g.fillStyle=gr; g.fillRect(0,0,W,H); g.strokeStyle="rgba(160,30,40,0.4)"; g.lineWidth=1; for(let i=0;i<16;i++){ const yy=((i*13)+ (T*45))%H, xx=((i*31)+ T*70)%W; g.beginPath(); g.moveTo(xx,yy); g.lineTo(xx-11,yy-3); g.stroke(); } g.restore(); }
 function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   if(!rm.cave){ const p=(dayClock%CYCLE)/CYCLE, day=p<0.5, fr=(day?p:(p-0.5))/0.5, sx=20+fr*(W-40), sy=48-Math.sin(fr*Math.PI)*32;
     g.save(); g.globalCompositeOperation="lighter"; const col=day?"rgba(255,200,120,":"rgba(190,205,240,";
@@ -667,7 +693,7 @@ function render(){
     if(scene.step===3){ const dx=40,dy=100,by=Math.sin(T*4)*3; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(dx,dy,0,dx,dy,24); gr.addColorStop(0,"rgba(255,207,92,.6)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(dx-24,dy-24,48,48); g.fillStyle=C.gold; px(dx+16+by,dy-1,7,2,C.gold); px(dx+16+by,dy-4,2,3,C.gold); px(dx+16+by,dy+1,2,3,C.gold); px(dx+14+by,dy-2,2,4,C.gold); g.restore(); } }
   else if(scene.mode==="play"){ drawScene(); const B2=BIOME[R[ri].b]; const s=sunNow(); const dk=R[ri].b==="cave"?B2.dark:Math.max(0.06,B2.dark*(1-s*0.92)); applyDark(dk);
     if(R[ri].b!=="cave"&&s>0.45){ g.save(); g.globalCompositeOperation="lighter"; g.globalAlpha=(s-0.45)*0.5; g.fillStyle=R[ri].hot?"#ffcf8a":"#9fc0e0"; g.fillRect(0,0,W,H); g.restore(); } // daylight wash
-    drawFrost(); drawBeacons(); drawAlerts(); drawHUD(); }
+    drawFrost(); drawBeacons(); drawAlerts(); if(R[ri].evil) drawEvil(); drawHUD(); }
   else if(scene.mode==="end"){ drawScene(); applyDark(0.5); drawHUD(); g.fillStyle="rgba(5,10,7,.5)"; g.fillRect(0,0,W,H); g.textAlign="center"; g.fillStyle=C.gold; g.font="10px 'Courier New',monospace"; g.fillText("KNOWLEDGE",W/2,84); g.fillStyle=C.spirit; g.font="7px 'Courier New',monospace"; g.fillText("the world boots up",W/2,98); g.textAlign="left"; }
   if(inv.mapOpen && scene.mode==="play") drawMap();
   if(flashT>0){ g.fillStyle="rgba(220,240,255,"+Math.min(1,flashT)+")"; g.fillRect(0,0,W,H); }
