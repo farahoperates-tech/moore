@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>GARBHA — Chapter One: Asia</title>
 <style>
   :root{ --edge:#2b3a72; --phos:#7ff0b0; --gold:#ffcf5c; --term:"Courier New",Courier,monospace; }
@@ -79,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200;
+const W=320,H=200, BUILD="v14 · day-night + coat";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -586,7 +589,8 @@ function drawSan(){ px(0,0,W,H,C.ink); for(let y=64;y<176;y+=16)for(let x=40;x<2
 function render(){
   if(scene.mode==="boot"){ px(0,0,W,H,C.night); g.fillStyle=C.phos; g.font="8px 'Courier New',monospace"; g.textBaseline="top";
     const L=["GARBHA  //  the golden womb","chapter one : asia","","> loading dream.exe .............. ok","> memory ....................... corrupt","> you ......................... unborn"];
-    for(let i=0;i<L.length;i++)g.fillText(L[i],14,28+i*12); if(Math.floor(T*2)%2===0){g.fillStyle=C.gold;g.fillText("> CLICK / ANY KEY TO BE BORN",14,28+7*12);} return; }
+    for(let i=0;i<L.length;i++)g.fillText(L[i],14,28+i*12); if(Math.floor(T*2)%2===0){g.fillStyle=C.gold;g.fillText("> CLICK / ANY KEY TO BE BORN",14,28+7*12);}
+    g.fillStyle="#3f9a6a"; g.fillText("build "+BUILD+"  (if this isn't the latest, hard-refresh: Cmd+Shift+R)",14,H-16); return; }
   if(scene.mode==="san"){ drawSan(); applyDark(inv.candleLit?0.86:0.985); if(scene.step===1&&!inv.candleLit)drawArrow(); if(scene.step===2&&!inv.candleLit)drawItems();
     if(scene.step===3){ const dx=40,dy=100,by=Math.sin(T*4)*3; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(dx,dy,0,dx,dy,24); gr.addColorStop(0,"rgba(255,207,92,.6)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(dx-24,dy-24,48,48); g.fillStyle=C.gold; px(dx+16+by,dy-1,7,2,C.gold); px(dx+16+by,dy-4,2,3,C.gold); px(dx+16+by,dy+1,2,3,C.gold); px(dx+14+by,dy-2,2,4,C.gold); g.restore(); } }
   else if(scene.mode==="play"){ drawScene(); const B2=BIOME[R[ri].b]; const dk=R[ri].b==="cave"?B2.dark:Math.max(0.32,B2.dark*(1-sunNow()*0.62)); applyDark(dk); drawFrost(); drawBeacons(); drawAlerts(); drawHUD(); }
