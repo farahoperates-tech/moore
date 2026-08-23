@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v19 · quests, shelter, the record";
+const W=320,H=200, BUILD="v20 · stealth grace & icon pack";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -214,7 +214,13 @@ function icon(kind,c,ox,oy,s){ const P=(a,b,w,h,col)=>{c.fillStyle=col;c.fillRec
   else if(kind==="candle"){P(6,5,4,10,C.bone);P(6,5,2,10,"#efe6c8");P(7,1,2,4,C.flame);P(7,0,2,2,C.gold);}
   else if(kind==="coat"){P(4,4,8,10,C.coat);P(4,4,8,3,C.coatH);P(7,5,2,9,"#3a251a");}
   else if(kind==="food"){P(4,6,8,6,"#b07a3a");P(4,6,8,2,"#caa060");P(5,8,1,1,"#5c3a16");P(9,9,1,1,"#5c3a16");}
-  else if(kind==="map"){P(3,3,10,10,"#c9b78a");P(3,3,10,2,"#ddc99a");P(4,5,8,1,"#7a6a44");P(4,8,8,1,"#7a6a44");P(6,4,1,8,"#7a6a44");P(9,6,2,2,C.blood);} }
+  else if(kind==="map"){P(3,3,10,10,"#c9b78a");P(3,3,10,2,"#ddc99a");P(4,5,8,1,"#7a6a44");P(4,8,8,1,"#7a6a44");P(6,4,1,8,"#7a6a44");P(9,6,2,2,C.blood);}
+  else if(kind==="axe"){P(7,3,2,11,C.trunk);P(4,2,5,4,C.steel);P(4,2,5,1,"#eef2fb");P(4,5,3,1,C.steel);}
+  else if(kind==="blade"){P(7,1,2,12,"#cfe0ff");P(7,1,1,12,"#eef4ff");P(5,13,6,1,C.goldD);P(7,14,2,2,C.trunk);}
+  else if(kind==="wraps"){P(4,4,8,9,"#d8cdb0");P(4,4,8,2,"#efe6c8");P(4,7,8,1,"#b8ac90");P(5,10,6,1,"#b8ac90");}
+  else if(kind==="medicine"){P(5,4,6,9,"#3a6a40");P(5,4,6,2,"#4a8a50");P(7,6,2,5,"#d8e8c0");P(6,8,4,1,"#d8e8c0");}
+  else if(kind==="shoes"){P(3,8,4,4,"#3a2a1c");P(8,8,4,4,"#3a2a1c");P(3,11,4,1,"#20130b");P(8,11,4,1,"#20130b");}
+  else if(kind==="water"){P(6,3,4,2,"#3a2e1a");P(5,5,6,9,"#3a86c8");P(5,5,6,2,"#6fb0e0");} }
 document.querySelectorAll("#inv .slot").forEach(sl=>{ const c=sl.querySelector("canvas").getContext("2d"); c.imageSmoothingEnabled=false; icon(sl.dataset.i,c,0,0,1);
   sl.addEventListener("pointerdown",e=>{ e.preventDefault(); actx(); useItem(sl.dataset.i); }); });
 function drinkBottle(){
@@ -274,7 +280,7 @@ function autoEquip(){ for(const k of ["blade","axe","knife"]){ if(belt[k]&&belt[
 function equipMelee(k){ if(belt[k]&&belt[k].dur>0){ weapon=belt[k]; eqKey=k; } }
 function cycleMelee(){ const owned=["knife","axe","blade"].filter(k=>belt[k]&&belt[k].dur>0); if(owned.length<2){ caption(weapon?("Only your "+weapon.name+", "+weapon.dur+" strikes left."):"No blade. Find one."); return; } let i=owned.indexOf(eqKey); i=(i+1)%owned.length; equipMelee(owned[i]); caption("Equipped: "+weapon.name+"."); setInv(); }
 let enemies=[], wildlife=[], parts=[], motes=[], arrows=[];
-let visited=new Set(), gateOpen=false, gateStage=0, windNorth=false, gateHint=0, evilT=0;
+let visited=new Set(), gateOpen=false, gateStage=0, windNorth=false, gateHint=0, evilT=0, roomCalm=0;
 
 function seededTrees(n,seed,B,avoid){ let s=seed; const rn=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};
   const t=[]; let guard=0; while(t.length<n&&guard++<400){ const x=26+rn()*268,y=48+rn()*116;
@@ -506,7 +512,7 @@ function gotoRoom(i,from){ ri=i; const rm=R[i]; scene={mode:"play"}; placeEl.tex
   player.tx=player.x;player.ty=player.y;player.dir="left";player.arriveCb=null;player.entryGrace=0.5;
   enemies=(rm.enemies||[]).filter(e=>!(rm.guard&&e.t==="ranger"&&gateOpen)).map(mkEnemy);
   wildlife=(rm.wild||[]).map(w=>({t:w.t,x:w.x,y:w.y,ph:Math.random()*6,vx:0,vy:0,flee:0}));
-  arrows=[]; parts=[]; motes=[];
+  arrows=[]; parts=[]; motes=[]; roomCalm=1.8;
   if(!muted) windStart(); setWind(BIOME[rm.b].cold>4?0.13:0.06);
   if(rm.evil){ evilT=0; if(!muted) sfxEvil(); }
   candleR=Math.max(candleR,1);
@@ -523,10 +529,10 @@ function nudgeNorth(){ if(!gateOpen) return; gateStage++;
   else caption("…look. everything is going north, bitch. the elk. the birds. the dead. everything but you. so GO. 🡱",{snark:true}); }
 
 function mkEnemy(e){ const base={x:e.x,y:e.y,t:e.t,dir:"left",phase:Math.random()*6,hurt:0,cd:0,dead:false,aggroOn:false};
-  if(e.t==="wolf")   Object.assign(base,{hp:2,spd:38,aggro:88,atk:16});
-  if(e.t==="human")  Object.assign(base,{hp:3,spd:17,aggro:58,atk:14});
-  if(e.t==="bear")   Object.assign(base,{hp:6,spd:30,aggro:96,atk:18});
-  if(e.t==="ranger") Object.assign(base,{hp:6,spd:26,aggro:150,atk:18});
+  if(e.t==="wolf")   Object.assign(base,{hp:2,spd:38,aggro:70,atk:16});
+  if(e.t==="human")  Object.assign(base,{hp:3,spd:17,aggro:52,atk:14});
+  if(e.t==="bear")   Object.assign(base,{hp:6,spd:30,aggro:66,atk:18});
+  if(e.t==="ranger") Object.assign(base,{hp:6,spd:26,aggro:130,atk:18});
   return base; }
 
 function takeKnowledge(){ if(knowledge)return; knowledge=true; sfxChime(); flashT=0.9; player.maxHp=4; player.hp=4; xp=0;
@@ -637,9 +643,11 @@ function update(dt){
   if(rm.evil){ evilT+=dt; if(evilT>8){ evilT=0; if(capDone()){ caption(EVILWIND[Math.floor(Math.random()*EVILWIND.length)]); if(!muted)sfxEvil(); } } }
 
   // enemies
+  if(roomCalm>0)roomCalm-=dt;
   for(const en of enemies){ if(en.dead)continue; en.phase+=dt*4; en.hurt=Math.max(0,en.hurt-dt); en.cd=Math.max(0,en.cd-dt);
     const dx=player.x-en.x,dy=player.y-en.y,d=Math.hypot(dx,dy)||0.01; en.dir=dx<0?"left":"right";
-    const see=d<en.aggro; if(see&&!en.aggroOn)sfxAlert(en.t); en.aggroOn=see;
+    // fresh into a room, beasts are still unaware — you get a moment to see them, flee, or strike first
+    const see=(roomCalm<=0 || en.aggroOn) && d<en.aggro; if(see&&!en.aggroOn)sfxAlert(en.t); en.aggroOn=see;
     if(see){ const sp=en.spd*dt; en.x+=dx/d*sp; en.y+=dy/d*sp;
       if(d<en.atk && en.cd<=0 && player.inv<=0){ en.cd=1.0; player.hp--; player.inv=1.1; sfxHurt(); if(en.t==="bear")sfxBear(); else if(en.t==="wolf")sfxWolf(); burst(player.x,player.y,C.blood,6); if(player.hp<=0)die("They were faster. The snow drinks what is left."); } }
     else { en.x+=Math.sin(en.phase*0.5)*6*dt; } }
@@ -663,7 +671,7 @@ function die(msg){ if(player._dead)return; player._dead=true; caption(msg,{cb:()
   hintEl.textContent="tap to walk · walk to an edge to travel · tap foes to fight";
   player.x=cp.x;player.y=cp.y;player.tx=cp.x;player.ty=cp.y;player.dir="down";player.entryGrace=0.6;player.arriveCb=null;
   enemies=(rm.enemies||[]).filter(e=>!(rm.guard&&e.t==="ranger"&&gateOpen)).map(mkEnemy);
-  wildlife=(rm.wild||[]).map(w=>({t:w.t,x:w.x,y:w.y,ph:Math.random()*6,vx:0,vy:0,flee:0})); arrows=[]; parts=[]; motes=[];
+  wildlife=(rm.wild||[]).map(w=>({t:w.t,x:w.x,y:w.y,ph:Math.random()*6,vx:0,vy:0,flee:0})); arrows=[]; parts=[]; motes=[]; roomCalm=1.8;
   if(!muted){ windStart(); setWind(BIOME[rm.b].cold>4?0.13:0.06); }
   caption(bound?"You wake at the last wayshrine that knew your name. The world waited for you. Learn faster.":"You wake again, where you fell. The forest does not mourn — it simply waits. (Touch a wayshrine to be reborn there instead.)"); },900); }}); }
 
@@ -718,17 +726,23 @@ function drawHouse(){ const th=houseTheme; const wall=th==="mud"?"#3a2c18":th===
   px(266,92,22,32,"#2a1c10"); px(266,92,22,3,"#3a2a1a"); px(282,108,2,2,C.gold);
   sprPlayer(player.x,player.y,player.dir,player.phase,false);
   g.fillStyle=C.gold; g.font="7px 'Courier New',monospace"; g.textAlign="center"; g.fillText("bed — sleep",bx,by+28); g.fillText("door",277,H-6); g.textAlign="left"; }
-function drawPack(){ g.fillStyle="rgba(8,10,20,.95)"; g.fillRect(0,0,W,H);
-  g.textAlign="center"; g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("- THE TRAVELLER'S PACK · 10 -",W/2,12);
-  const L=[]; ["knife","axe","blade"].forEach(k=>{ if(belt[k]&&belt[k].dur>0)L.push(belt[k].name+" ("+belt[k].dur+")"); });
-  if(inv.bow)L.push("bow · "+inv.arrows+" arrows"); if(inv.candle)L.push("candle · soul-light");
-  if(inv.coat)L.push("coat · for the cold north"); if(inv.wraps)L.push("desert wraps · for the heat");
-  if(inv.shoes)L.push("boots"); if(inv.food>0)L.push("food ×"+inv.food);
-  if(inv.medicine)L.push("healer's kit"); if(inv.map)L.push("the Record (map)");
-  const ox=22,oy=24,cw=134,ch=15;
-  for(let i=0;i<10;i++){ const cx=ox+(i%2)*152, cy=oy+((i/2)|0)*ch; g.fillStyle=i<L.length?"#141d3a":"#0b1024"; g.fillRect(cx,cy,cw,12); g.strokeStyle="#263468"; g.lineWidth=1; g.strokeRect(cx+0.5,cy+0.5,cw-1,11); if(i<L.length){ g.fillStyle=C.phos; g.font="7px 'Courier New',monospace"; g.textAlign="left"; g.fillText(L[i].slice(0,24),cx+4,cy+8.5); } }
-  g.textAlign="center"; g.fillStyle=C.gold; g.font="7px 'Courier New',monospace"; g.fillText("fragments of knowledge gathered: "+frags.size+" / "+FRAG_TOTAL,W/2,H-19);
-  g.fillStyle="#7d8ec9"; g.fillText("tap / press B to close",W/2,H-9); g.textAlign="left"; }
+function drawPack(){ g.fillStyle="rgba(8,10,20,.96)"; g.fillRect(0,0,W,H);
+  g.textAlign="center"; g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("THE TRAVELLER'S PACK",W/2,12); g.textAlign="left";
+  // build the carried items as {icon, count} — symbols, not words
+  const L=[]; ["knife","axe","blade"].forEach(k=>{ if(belt[k]&&belt[k].dur>0)L.push({k:k==="knife"?"knife":k,n:belt[k].dur}); });
+  if(inv.bow)L.push({k:"bow",n:inv.arrows}); if(inv.candle)L.push({k:"candle"});
+  if(inv.coat)L.push({k:"coat"}); if(inv.wraps)L.push({k:"wraps"});
+  if(inv.shoes)L.push({k:"shoes"}); if(inv.food>0)L.push({k:"food",n:inv.food});
+  if(inv.medicine)L.push({k:"medicine"}); if(inv.map)L.push({k:"map"});
+  const cols=5,rows=2,sz=40,gap=8, gw=cols*sz+(cols-1)*gap, ox=(W-gw)/2, oy=26;
+  for(let i=0;i<cols*rows;i++){ const cx=ox+(i%cols)*(sz+gap), cy=oy+((i/cols)|0)*(sz+gap);
+    const it=L[i], on=!!it;
+    g.fillStyle=on?"#131c38":"#0b1024"; g.fillRect(cx,cy,sz,sz);
+    g.strokeStyle=on?"#3b56a8":"#1c2748"; g.lineWidth=1; g.strokeRect(cx+0.5,cy+0.5,sz-1,sz-1);
+    if(on){ icon(it.k,g,cx+sz/2-8*2,cy+sz/2-8*2,2);
+      if(it.n!=null){ g.fillStyle=C.gold; g.font="9px 'Courier New',monospace"; g.textAlign="right"; g.fillText(it.n,cx+sz-3,cy+sz-3); g.textAlign="left"; } } }
+  g.textAlign="center"; g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("✶ fragments of knowledge:  "+frags.size+" / "+FRAG_TOTAL,W/2,H-20);
+  g.fillStyle="#7d8ec9"; g.font="7px 'Courier New',monospace"; g.fillText("tap  ·  or press B to close",W/2,H-9); g.textAlign="left"; }
 function drawEvil(){ g.save(); const a=0.22+Math.sin(T*1.7)*0.08; const gr=g.createRadialGradient(W/2,H/2,26,W/2,H/2,190); gr.addColorStop(0,"rgba(50,0,10,0)"); gr.addColorStop(1,"rgba(95,0,22,"+(0.5+a)+")"); g.fillStyle=gr; g.fillRect(0,0,W,H); g.strokeStyle="rgba(160,30,40,0.4)"; g.lineWidth=1; for(let i=0;i<16;i++){ const yy=((i*13)+ (T*45))%H, xx=((i*31)+ T*70)%W; g.beginPath(); g.moveTo(xx,yy); g.lineTo(xx-11,yy-3); g.stroke(); } g.restore(); }
 function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   if(rm.cars) for(const c of rm.cars) sprCar(c.x,c.y);
@@ -831,8 +845,8 @@ function drawHUD(){
   bar(W-40,27,player.stamina,stc);
   drawDayNight();
   drawSkin();
-  // quest counter
-  g.fillStyle=C.gold; g.font="7px 'Courier New',monospace"; g.fillText("✶ "+frags.size+"/"+FRAG_TOTAL,4,36);
+  // quest counter (fragments of knowledge gathered)
+  g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("✶ "+frags.size+" / "+FRAG_TOTAL,4,37);
   // backpack icon (bottom-right, tap or B)
   if(inv.pack){ const bxp=W-14,byp=H-13; px(bxp-6,byp-7,13,12,"#3a2a1a"); px(bxp-6,byp-7,13,3,"#5a4028"); px(bxp-3,byp-9,7,3,"#4a3422"); px(bxp-4,byp-2,9,5,"#2a1c10"); px(bxp,byp,1,1,C.gold); }
   if(knowledge){ g.fillStyle=C.gold; g.font="7px 'Courier New',monospace"; g.fillText("LVL 1  XP "+xp,20,H-6); }
