@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v20 · stealth grace & icon pack";
+const W=320,H=200, BUILD="v21 · a real map at last";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -789,28 +789,38 @@ function drawBeacons(){ const rm=R[ri],by=Math.sin(T*4)*2; const spark=(x,y)=>{ 
     const c=gold?"rgba(255,207,92,":"rgba(127,240,176,"; const gr=g.createRadialGradient(mx,my,0,mx,my,17); gr.addColorStop(0,c+"0.75)"); gr.addColorStop(1,c+"0)"); g.fillStyle=gr; g.fillRect(mx-17,my-17,34,34); g.restore(); };
   if(ex.n!=null)opening(W/2,47,windNorth); if(ex.s!=null)opening(W/2,H-7,false);
   if(ex.w!=null)opening(6,H/2,false); if(ex.e!=null)opening(W-6,H/2, ri===0&&!inv.map); }
-function drawMap(){ // THE RECORD — a weathered chart of drowned Asia
-  px(0,0,W,H,"#08131c");                                   // the risen sea
+// geographic pixel positions of each room on the Record (Asia laid out N→S, W→E)
+const MAPXY=[[150,74],[150,58],[186,66],[126,80],[96,66],[170,82],[198,92],[100,86],[128,100],[150,44],[150,28],[150,114],[180,122],[212,116],[240,122],[118,130],[120,148],[242,140],[106,172],[104,186],[172,168],[210,110],[224,124],[76,168],[66,156],[54,150],[86,150],[100,158]];
+// blobs that together make the drowned continent (cx,cy,r)
+const LAND=[[150,58,52],[126,92,52],[150,120,50],[196,112,46],[236,128,36],[112,150,42],[74,156,30],[168,156,40],[152,178,28],[210,118,34],[100,176,26]];
+const MAPLBL=[["SIBERIA",150,50],["MONGOLIA",152,110],["CHINA",228,108],["SILK ROAD",112,136],["INDIA",174,160],["PERSIA",96,150],["ARABIA",104,168],["LEVANT",52,140]];
+function drawMap(){ // THE RECORD — a drawn chart of drowned Asia
+  px(0,0,W,H,"#081320");                                            // the risen sea
   let s=7; const rn=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};
-  for(let i=0;i<90;i++)px(rn()*W,14+rn()*(H-26),1,1,"#122436");   // wave speckle
-  const ox=40,oy=30,cw=30,ch=17; const pos=i=>({x:ox+MP[i][0]*cw,y:oy+MP[i][1]*ch});
-  // land: tan haze under every seen region + its neighbours
-  g.save(); g.globalCompositeOperation="lighter";
-  for(let i=0;i<R.length;i++){ if(!visited.has(i))continue; const p=pos(i); const gr=g.createRadialGradient(p.x,p.y,0,p.x,p.y,16); gr.addColorStop(0,"rgba(70,58,32,.9)"); gr.addColorStop(1,"rgba(70,58,32,0)"); g.fillStyle=gr; g.fillRect(p.x-16,p.y-16,32,32); }
-  g.restore();
-  // inked routes
-  g.strokeStyle="#7a6236"; g.lineWidth=1;
-  for(let i=0;i<R.length;i++){ if(!visited.has(i))continue; const ex=R[i].exits; for(const d in ex){ const j=ex[d]; if(j==null||!visited.has(j))continue; const a=pos(i),b=pos(j); g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(b.x,b.y); g.stroke(); } }
-  // nodes + quest glyphs
-  for(let i=0;i<R.length;i++){ if(!visited.has(i))continue; const p=pos(i);
-    g.fillStyle=(i===ri)?C.gold:C.phos; g.fillRect(p.x-2,p.y-2,4,4);
-    if(i===ri){ g.strokeStyle=C.gold; g.lineWidth=1; const r=4+Math.sin(T*4)*1.5; g.strokeRect(p.x-r,p.y-r,r*2,r*2); }
-    if(FRAGROOM[i] && !frags.has(FRAGROOM[i])){ g.save(); g.globalAlpha=0.5+Math.sin(T*4)*0.4; g.fillStyle=C.gold; g.font="9px 'Courier New',monospace"; g.textAlign="center"; g.fillText("✶",p.x,p.y-4); g.restore(); }
+  for(let i=0;i<70;i++)px(rn()*W,16+rn()*(H-30),rn()<0.5?1:2,1,"#10223a");  // wave speckle
+  // coast halo, then land — overlapping blobs read as a continent, not a grid
+  g.fillStyle="#241d10"; for(const b of LAND){ g.beginPath(); g.arc(b[0],b[1],b[2]+3,0,6.28); g.fill(); }
+  g.fillStyle="#5f5230"; for(const b of LAND){ g.beginPath(); g.arc(b[0],b[1],b[2],0,6.28); g.fill(); }
+  g.fillStyle="#6d5f39"; for(const b of LAND){ g.beginPath(); g.arc(b[0],b[1]-2,b[2]-4,0,6.28); g.fill(); }   // sunlit north edge
+  for(let i=0;i<220;i++){ const x=rn()*W,y=16+rn()*(H-30); if(LAND.some(b=>Math.hypot(x-b[0],y-b[1])<b[2]-2)) px(x,y,1,1,rn()<0.5?"#5a4d2c":"#7a6a40"); } // land texture
+  // faint region names (geography, always shown)
+  g.textAlign="center"; g.font="6px 'Courier New',monospace"; g.fillStyle="rgba(40,32,16,0.75)"; for(const L of MAPLBL) g.fillText(L[0],L[1],L[2]);
+  // inked roads between places you have walked
+  g.strokeStyle="#3a2e18"; g.lineWidth=1;
+  for(let i=0;i<R.length;i++){ if(!visited.has(i))continue; const ex=R[i].exits; for(const d in ex){ const j=ex[d]; if(j==null||!visited.has(j))continue; const a=MAPXY[i],b=MAPXY[j]; g.beginPath(); g.moveTo(a[0],a[1]); g.lineTo(b[0],b[1]); g.stroke(); } }
+  // waypoints (round, not boxes) + quest glyphs
+  for(let i=0;i<R.length;i++){ if(!visited.has(i))continue; const p=MAPXY[i];
+    if(FRAGROOM[i] && !frags.has(FRAGROOM[i])){ g.save(); g.globalAlpha=0.55+Math.sin(T*4)*0.4; g.fillStyle=C.gold; g.font="10px 'Courier New',monospace"; g.textAlign="center"; g.textBaseline="middle"; g.fillText("✶",p[0],p[1]-7); g.textBaseline="alphabetic"; g.restore(); }
+    g.fillStyle="#1a140a"; g.beginPath(); g.arc(p[0],p[1],3,0,6.28); g.fill();
+    g.fillStyle=(i===ri)?C.gold:C.phos; g.beginPath(); g.arc(p[0],p[1],2,0,6.28); g.fill();
+    if(i===ri){ g.strokeStyle=C.gold; g.lineWidth=1; const r=4.5+Math.sin(T*4)*1.5; g.beginPath(); g.arc(p[0],p[1],r,0,6.28); g.stroke(); }
   }
-  g.textAlign="center";
-  g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("THE RECORD — drowned Asia",W/2,12);
-  g.fillStyle=C.phos; g.font="7px 'Courier New',monospace"; g.fillText(R[ri].name,W/2,H-19);
-  g.fillStyle="#c9a24a"; g.fillText("✶ a quest waits here   ·   fragments "+frags.size+"/"+FRAG_TOTAL+"   ·   tap to close",W/2,H-9);
+  // title & footer
+  g.textAlign="center"; g.textBaseline="alphabetic";
+  g.fillStyle="#0a1320"; g.fillRect(0,0,W,15); g.fillRect(0,H-24,W,24);
+  g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("THE RECORD — what the sea gave back of Asia",W/2,11);
+  g.fillStyle=C.phos; g.font="7px 'Courier New',monospace"; g.fillText("you are here: "+R[ri].name,W/2,H-15);
+  g.fillStyle="#c9a24a"; g.fillText("✶ = a quest waits   ·   knowledge "+frags.size+"/"+FRAG_TOTAL+"   ·   tap to close",W/2,H-5);
   g.textAlign="left"; }
 function drawAlerts(){ for(const en of enemies){ if(en.dead||!en.aggroOn)continue; const x=en.x,y=en.y-(en.t==="bear"?22:18),by=Math.sin(T*9)*1.5; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(x,y+by,0,x,y+by,11); gr.addColorStop(0,"rgba(255,207,92,.85)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(x-11,y-11+by,22,22); g.restore(); g.fillStyle=C.gold; g.fillRect(x-1,y-7+by,2,7); g.fillRect(x-1,y+2+by,2,2); } }
 function applyDark(a){ dg.clearRect(0,0,W,H); dg.fillStyle="rgba(4,6,14,"+a+")"; dg.fillRect(0,0,W,H); dg.globalCompositeOperation="destination-out";
