@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v17 · the levant";
+const W=320,H=200, BUILD="v18 · waterskin & sky-dial";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -217,6 +217,13 @@ function icon(kind,c,ox,oy,s){ const P=(a,b,w,h,col)=>{c.fillStyle=col;c.fillRec
   else if(kind==="map"){P(3,3,10,10,"#c9b78a");P(3,3,10,2,"#ddc99a");P(4,5,8,1,"#7a6a44");P(4,8,8,1,"#7a6a44");P(6,4,1,8,"#7a6a44");P(9,6,2,2,C.blood);} }
 document.querySelectorAll("#inv .slot").forEach(sl=>{ const c=sl.querySelector("canvas").getContext("2d"); c.imageSmoothingEnabled=false; icon(sl.dataset.i,c,0,0,1);
   sl.addEventListener("pointerdown",e=>{ e.preventDefault(); actx(); useItem(sl.dataset.i); }); });
+function drinkBottle(){
+  if(player.water<=0){ caption("Your waterskin is empty. Find a well, a spring, a river — then tap the water to fill it."); return; }
+  if(player.thirst>=99){ caption("You are not thirsty. Save it."); return; }
+  const gulp=Math.min(player.water,100-player.thirst,50);
+  player.thirst=Math.min(100,player.thirst+gulp); player.water-=gulp; if(!muted)sfxStep();
+  caption(player.water<=0?"You drink the last of your waterskin. It runs dry.":"You drink from your waterskin.");
+}
 function useItem(k){
   if(k==="food"){ if(inv.food>0){inv.food--;player.hunger=Math.min(100,player.hunger+30);setInv();sfxStep();caption("You eat. Your hands steady.");} else caption("No food. Forage the bushes, or hunt the beasts."); }
   else if(k==="map"){ if(inv.map){ inv.mapOpen=!inv.mapOpen; } else caption("You have no map. A dead traveller left one to the EAST."); }
@@ -257,7 +264,7 @@ const EVILWIND=[
   "You hear it before you understand it — a voice with no mouth, saying a name you almost know.",
   "The air tastes of iron and old grief. Something evil first learned patience in this place.",
   "Do not listen to the wind. (You are already listening.)"];
-const player={x:270,y:120,tx:270,ty:120,dir:"left",moving:false,phase:0,stepT:0,warmth:100,hunger:100,thirst:100,hp:3,maxHp:3,inv:0,atkCd:0,attackT:0,entryGrace:0};
+const player={x:270,y:120,tx:270,ty:120,dir:"left",moving:false,phase:0,stepT:0,warmth:100,hunger:100,thirst:100,water:100,hp:3,maxHp:3,inv:0,atkCd:0,attackT:0,entryGrace:0};
 const inv={candle:false,candleLit:false,coat:false,shoes:false,map:false,mapOpen:false,food:1,bow:false,arrows:0};
 const belt={knife:null,axe:null,blade:null}; let eqKey="knife";
 let weapon=null, candleR=0, flick=1, fade=0, fadeDir=0, fadeCb=null, knowledge=false, xp=0, flashT=0;
@@ -400,6 +407,7 @@ function click(x,y){
   if(scene.mode==="san"){ sanClick(x,y); return; }
   if(scene.mode!=="play") return;
   const rm=R[ri];
+  if(x<20 && y>142){ drinkBottle(); return; }   // waterskin on the side
   // strike nearest enemy in melee range
   let near=null,nd=99; for(const en of enemies){ if(en.dead)continue; const d=Math.hypot(x-en.x,y-en.y); if(d<nd){nd=d;near=en;} }
   if(near && nd<20){ const pd=Math.hypot(player.x-near.x,player.y-near.y);
@@ -409,7 +417,7 @@ function click(x,y){
     return; }
   // interact: fires, pickups, slabs, dweller, shrine
   if(rm.fires) for(const f of rm.fires){ if(!f.lit && Math.hypot(x-f.x,y-f.y)<16){ walkTo(f.x,f.y+10,()=>lightFire(f)); return; } }
-  if(rm.water) for(const wl of rm.water){ if(Math.hypot(x-wl.x,y-wl.y)<18){ walkTo(wl.x,wl.y+12,()=>{player.thirst=100;sfxStep();caption("You drink deep. Cool water. You will live a while longer.");}); return; } }
+  if(rm.water) for(const wl of rm.water){ if(Math.hypot(x-wl.x,y-wl.y)<18){ walkTo(wl.x,wl.y+12,()=>{player.thirst=100;player.water=100;sfxStep();caption("You drink deep, and fill your skin. Cool water. You will live a while longer.");}); return; } }
   if(rm.coat && !rm.coat.got && Math.hypot(x-rm.coat.x,y-rm.coat.y)<16){ walkTo(rm.coat.x,rm.coat.y+10,()=>{rm.coat.got=1;inv.coat=true;setInv();caption("You take the coat. The cold loses some teeth.");}); return; }
   if(rm.shoes && !rm.shoes.got && Math.hypot(x-rm.shoes.x,y-rm.shoes.y)<16){ walkTo(rm.shoes.x,rm.shoes.y+10,()=>{rm.shoes.got=1;inv.shoes=true;setInv();caption("Old boots, still good. Warmer feet, surer steps.");}); return; }
   if(rm.map && !rm.map.got && Math.hypot(x-rm.map.x,y-rm.map.y)<16){ walkTo(rm.map.x,rm.map.y+10,()=>{rm.map.got=1;inv.map=true;setInv();caption("A charcoal map — a dead traveller's own wandering. Tap the map to open what you have seen.");}); return; }
@@ -567,7 +575,7 @@ function update(dt){
   if(rm.shrine){ if(motes.length<20&&Math.random()<dt*8) motes.push({x:player.x+(Math.random()*40-20),y:player.y+(Math.random()*30-15),life:2});
     for(let i=motes.length-1;i>=0;i--){ const m=motes[i]; m.life-=dt; m.x+=(rm.shrine.x-m.x)*dt*0.8; m.y+=(rm.shrine.y-10-m.y)*dt*0.8; if(m.life<=0)motes.splice(i,1); } }
 }
-function die(msg){ if(player._dead)return; player._dead=true; caption(msg,{cb:()=>{ setTimeout(()=>{ player._dead=false; player.hp=player.maxHp; player.warmth=65; player.hunger=Math.max(player.hunger,40); player.thirst=Math.max(player.thirst,55); player.inv=1.5; player.x=W/2;player.y=H/2;player.tx=W/2;player.ty=H/2; enemies=(R[ri].enemies||[]).filter(e=>!(R[ri].guard&&e.t==="ranger"&&gateOpen)).map(mkEnemy); caption("You wake again. The forest does not mourn. It simply waits. Learn faster."); },900); }}); }
+function die(msg){ if(player._dead)return; player._dead=true; caption(msg,{cb:()=>{ setTimeout(()=>{ player._dead=false; player.hp=player.maxHp; player.warmth=65; player.hunger=Math.max(player.hunger,40); player.thirst=Math.max(player.thirst,55); player.water=Math.max(player.water,60); player.inv=1.5; player.x=W/2;player.y=H/2;player.tx=W/2;player.ty=H/2; enemies=(R[ri].enemies||[]).filter(e=>!(R[ri].guard&&e.t==="ranger"&&gateOpen)).map(mkEnemy); caption("You wake again. The forest does not mourn. It simply waits. Learn faster."); },900); }}); }
 
 // ---------- render ----------
 function drawGround(B,rm){ px(0,0,W,H,B.g0);
@@ -601,10 +609,6 @@ function sprPort(x,y){ px(x-14,y+6,28,3,C.shadow); px(x-14,y-4,20,10,C.rustD); p
 function drawBuild(t,x,y){ ({ger:sprGer,wall:sprWall,pagoda:sprPagoda,dome:sprDome,cube:sprCube,shikhara:sprShikhara,crystal:sprCrystal,station:sprStation,palace:sprPalace,skyscraper:sprSkyscraper,ruin:sprRuin,petra:sprPetra,port:sprPort}[t]||sprPagoda)(x,y); }
 function drawEvil(){ g.save(); const a=0.22+Math.sin(T*1.7)*0.08; const gr=g.createRadialGradient(W/2,H/2,26,W/2,H/2,190); gr.addColorStop(0,"rgba(50,0,10,0)"); gr.addColorStop(1,"rgba(95,0,22,"+(0.5+a)+")"); g.fillStyle=gr; g.fillRect(0,0,W,H); g.strokeStyle="rgba(160,30,40,0.4)"; g.lineWidth=1; for(let i=0;i<16;i++){ const yy=((i*13)+ (T*45))%H, xx=((i*31)+ T*70)%W; g.beginPath(); g.moveTo(xx,yy); g.lineTo(xx-11,yy-3); g.stroke(); } g.restore(); }
 function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
-  if(!rm.cave){ const p=(dayClock%CYCLE)/CYCLE, day=p<0.5, fr=(day?p:(p-0.5))/0.5, sx=20+fr*(W-40), sy=48-Math.sin(fr*Math.PI)*32;
-    g.save(); g.globalCompositeOperation="lighter"; const col=day?"rgba(255,200,120,":"rgba(190,205,240,";
-    const gg=g.createRadialGradient(sx,sy,0,sx,sy,44); gg.addColorStop(0,col+"0.75)"); gg.addColorStop(1,col+"0)"); g.fillStyle=gg; g.fillRect(sx-44,sy-44,88,88);
-    g.fillStyle=day?"#ffe0a0":"#dfe7f5"; g.beginPath(); g.arc(sx,sy,7,0,6.28); g.fill(); g.restore(); }
   if(rm.cars) for(const c of rm.cars) sprCar(c.x,c.y);
   if(rm.tower) sprTower(rm.tower.x,rm.tower.y);
   if(rm.slab) sprSlab(rm.slab.x,rm.slab.y);
@@ -667,14 +671,41 @@ function drawFrost(){ if(scene.mode!=="play")return; const c=Math.max(0,(30-play
 function heart(x,y,on){ g.fillStyle=on?C.blood:"#2a2030"; g.fillRect(x,y+1,3,3); g.fillRect(x+4,y+1,3,3); g.fillRect(x+1,y+3,5,2); g.fillRect(x+2,y+5,3,1); }
 function drawHUD(){
   for(let i=0;i<player.maxHp;i++) heart(6+i*10,6,i<player.hp);
-  const bar=(x,y,v,cOn)=>{ px(x,y,32,4,"#0a0f1a"); const w=Math.max(0,Math.min(32,v/100*32)); px(x,y,w,4,cOn); };
-  // warmth: flame icon + bar (blue when low)
-  px(W-46,5,3,2,player.warmth<25?C.ice:C.flame); px(W-47,7,5,3,player.warmth<25?C.ice:C.flame); px(W-46,4,2,2,player.warmth<25?C.ice:C.gold);
-  bar(W-40,6,player.warmth, player.warmth<25?C.ice:C.flame);
-  // food: meat icon + bar
-  px(W-47,13,5,3,"#b07a3a"); px(W-48,14,2,2,"#e8d0a0"); bar(W-40,13,player.hunger,"#b07a3a");
-  px(W-47,20,4,4,"#4aa8e0"); bar(W-40,20,player.thirst, player.thirst<25?"#e05a5a":"#4aa8e0");   // 💧 thirst (matters in the heat)
-  if(knowledge){ g.fillStyle=C.gold; g.font="7px 'Courier New',monospace"; g.fillText("LVL 1  XP "+xp,6,H-6); }
+  const bar=(x,y,v,cOn)=>{ px(x-1,y-1,34,6,"#000"); px(x,y,32,4,"#0a0f1a"); const w=Math.max(0,Math.min(32,v/100*32)); px(x,y,w,4,cOn); };
+  const ix=W-52; // icon column, bars start at W-40
+  // WARMTH — flame (blue when freezing)
+  const wc=player.warmth<25?C.ice:C.flame, wt=player.warmth<25?C.ice:C.gold;
+  px(ix+2,4,1,1,wt); px(ix+1,5,3,1,wc); px(ix,6,5,2,wc); px(ix+1,8,3,1,wc); px(ix+2,6,1,2,wt);
+  bar(W-40,6,player.warmth,wc);
+  // FOOD — drumstick
+  px(ix,11,4,3,"#b07a3a"); px(ix,11,4,1,"#c98a4a"); px(ix+3,13,3,1,"#e8d0a0"); px(ix+5,13,1,2,"#e8d0a0");
+  bar(W-40,13,player.hunger,"#b07a3a");
+  // THIRST — water droplet
+  const tc=player.thirst<25?"#e05a5a":"#4aa8e0"; px(ix+2,18,1,1,tc); px(ix+1,19,3,1,tc); px(ix,20,5,3,tc); px(ix+1,23,3,1,tc); px(ix+1,20,1,1,"#cfe8ff");
+  bar(W-40,20,player.thirst,tc);
+  drawDayNight();
+  drawSkin();
+  if(knowledge){ g.fillStyle=C.gold; g.font="7px 'Courier New',monospace"; g.fillText("LVL 1  XP "+xp,20,H-6); }
+}
+function drawDayNight(){ // sun/moon index, top-left under the hearts
+  const s=sunNow(), x=10, y=22, night=s<0.22;
+  g.save();
+  const glow=g.createRadialGradient(x,y,0,x,y,9); const gc=night?"120,150,210":"255,200,110";
+  glow.addColorStop(0,"rgba("+gc+","+(0.35+s*0.4)+")"); glow.addColorStop(1,"rgba("+gc+",0)");
+  g.fillStyle=glow; g.beginPath(); g.arc(x,y,9,0,6.28); g.fill();
+  if(night){ g.fillStyle="#cfd8f0"; g.beginPath(); g.arc(x,y,4,0,6.28); g.fill(); g.fillStyle="#0a0f1a"; g.beginPath(); g.arc(x+2,y-1,3.4,0,6.28); g.fill(); }
+  else { g.fillStyle="#ffd98a"; g.beginPath(); g.arc(x,y,3.6,0,6.28); g.fill();
+    g.strokeStyle="#ffcf8a"; g.lineWidth=1; for(let i=0;i<8;i++){ const a=i/8*6.28; g.beginPath(); g.moveTo(x+Math.cos(a)*5,y+Math.sin(a)*5); g.lineTo(x+Math.cos(a)*(5+2*s),y+Math.sin(a)*(5+2*s)); g.stroke(); } }
+  g.restore();
+}
+function drawSkin(){ // waterskin on the left side — tap to drink, fills at water
+  const x=6,y=150,h=30,w=9;
+  px(x+3,y-4,3,4,"#3a2e1a"); px(x+3,y-5,3,1,"#5a4a2a");         // cork
+  px(x-1,y-1,w+2,h+2,"#000"); px(x,y,w,h,"#0a1420");              // body
+  const fh=Math.round(player.water/100*(h-2)), fc=player.water<25?"#e05a5a":"#3a86c8";
+  px(x+1,y+h-1-fh,w-2,fh,fc); if(fh>2)px(x+1,y+h-1-fh,w-2,1,player.water<25?"#f08a8a":"#6fb0e0");
+  px(x,y,1,h,"#1a3048"); px(x+w-1,y,1,h,"#050a12");               // glass edges
+  g.fillStyle="rgba(180,210,240,0.5)"; g.font="6px 'Courier New',monospace"; g.textAlign="center"; g.fillText("tap",x+w/2,y+h+7); g.textAlign="left";
 }
 function drawArrow(){ const by=Math.sin(T*4)*4; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(160,64+by,0,160,64+by,26); gr.addColorStop(0,"rgba(255,207,92,.5)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(130,34+by,60,60); g.globalCompositeOperation="source-over"; g.fillStyle=C.gold; g.beginPath(); g.moveTo(160,78+by); g.lineTo(150,64+by); g.lineTo(156,64+by); g.lineTo(156,52+by); g.lineTo(164,52+by); g.lineTo(164,64+by); g.lineTo(170,64+by); g.closePath(); g.fill(); g.restore(); }
 function drawItems(){ const items=[{k:"knife",x:130},{k:"candle",x:160},{k:"food",x:190}],by=Math.sin(T*3)*2; for(const it of items){ const iy=64+by,s=1.5; g.save(); g.globalCompositeOperation="lighter"; const base=it.k==="candle"?"rgba(255,200,90,":"rgba(150,170,210,"; const gr=g.createRadialGradient(it.x,iy,0,it.x,iy,17); gr.addColorStop(0,base+(it.k==="candle"?0.55:0.3)+")"); gr.addColorStop(1,base+"0)"); g.fillStyle=gr; g.fillRect(it.x-18,iy-18,36,36); g.restore(); icon(it.k,g,it.x-8*s,iy-8*s,s); if(it.k==="candle"){g.strokeStyle="rgba(255,207,92,"+(0.4+Math.sin(T*5)*0.3)+")";g.lineWidth=1;g.strokeRect(it.x-11,iy-13,22,27);} } }
