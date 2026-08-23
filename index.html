@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v18 · waterskin & sky-dial";
+const W=320,H=200, BUILD="v19 · quests, shelter, the record";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -264,10 +264,12 @@ const EVILWIND=[
   "You hear it before you understand it — a voice with no mouth, saying a name you almost know.",
   "The air tastes of iron and old grief. Something evil first learned patience in this place.",
   "Do not listen to the wind. (You are already listening.)"];
-const player={x:270,y:120,tx:270,ty:120,dir:"left",moving:false,phase:0,stepT:0,warmth:100,hunger:100,thirst:100,water:100,hp:3,maxHp:3,inv:0,atkCd:0,attackT:0,entryGrace:0};
-const inv={candle:false,candleLit:false,coat:false,shoes:false,map:false,mapOpen:false,food:1,bow:false,arrows:0};
+const player={x:270,y:120,tx:270,ty:120,dir:"left",moving:false,phase:0,stepT:0,warmth:100,hunger:100,thirst:100,water:100,stamina:100,hp:3,maxHp:3,inv:0,atkCd:0,attackT:0,entryGrace:0};
+const inv={candle:false,candleLit:false,coat:false,shoes:false,wraps:false,medicine:false,pack:false,map:false,mapOpen:false,food:1,bow:false,arrows:0};
 const belt={knife:null,axe:null,blade:null}; let eqKey="knife";
-let weapon=null, candleR=0, flick=1, fade=0, fadeDir=0, fadeCb=null, knowledge=false, xp=0, flashT=0;
+let weapon=null, candleR=0, flick=1, fade=0, fadeDir=0, fadeCb=null, knowledge=false, canRead=false, packOpen=false, houseTheme="ruin", xp=0, flashT=0;
+const frags=new Set(); const FRAG_TOTAL=7; const FRAGROOM={21:"mark",11:"voice",14:"page",20:"zero",15:"alphabet",26:"book",25:"grief"};
+let checkpoint={ri:0,x:W/2,y:H/2};
 function autoEquip(){ for(const k of ["blade","axe","knife"]){ if(belt[k]&&belt[k].dur>0){weapon=belt[k];eqKey=k;return;} } weapon=null; }
 function equipMelee(k){ if(belt[k]&&belt[k].dur>0){ weapon=belt[k]; eqKey=k; } }
 function cycleMelee(){ const owned=["knife","axe","blade"].filter(k=>belt[k]&&belt[k].dur>0); if(owned.length<2){ caption(weapon?("Only your "+weapon.name+", "+weapon.dur+" strikes left."):"No blade. Find one."); return; } let i=owned.indexOf(eqKey); i=(i+1)%owned.length; equipMelee(owned[i]); caption("Equipped: "+weapon.name+"."); setInv(); }
@@ -294,6 +296,7 @@ const R=[
   trees:seededTrees(5,33,BIOME.frost,(x,y)=>(x>70&&x<170&&y>60&&y<140)||clearEdges(x,y)), cars:[{x:210,y:150}], fires:[{x:150,y:120,lit:0}],
   corpse:{x:110,y:100}, coat:{x:92,y:92}, shoes:{x:128,y:92}, axe:{x:110,y:128}, map:{x:150,y:74},
   slab:{x:232,y:80,say:"A slab that once held light. They pressed these to their faces to feel less alone."},
+  way:{x:170,y:150}, house:{x:60,y:96,theme:"ruin"},
   wild:[], enemies:[] },
  {b:"frost",name:"ASIA · THE MIRE", exits:{n:0,w:7},
   enter:"Black water and reeds. Ravens keep count of you. Berries cling to the last unfrozen bank.",
@@ -318,7 +321,7 @@ const R=[
  {b:"steppe",name:"ASIA · THE STEPPE EDGE", exits:{s:4,e:9,w:11}, steppe:1,
   enter:"The forest gives out. Grass to forever, wind that never stops. Wild horses run from you. Eagles read the sky.",
   trees:seededTrees(3,88,BIOME.steppe,clearEdges), fires:[],
-  bush:[{x:60,y:150,ber:1},{x:250,y:90,ber:1,k:"mush"}], dweller:{x:150,y:70}, wild:[{t:"horse",x:120,y:110},{t:"horse",x:170,y:130},{t:"raven",x:220,y:60}], enemies:[{t:"wolf",x:230,y:150}] },
+  bush:[{x:60,y:150,ber:1},{x:250,y:90,ber:1,k:"mush"}], dweller:{x:150,y:70}, way:{x:150,y:150}, chest:{x:70,y:80,loot:["arrows","food"]}, wild:[{t:"horse",x:120,y:110},{t:"horse",x:170,y:130},{t:"raven",x:220,y:60}], enemies:[{t:"wolf",x:230,y:150}] },
  {b:"mtn",name:"ASIA · THE APPROACH", exits:{s:1,w:8,n:10}, scent:1, guard:1,
   enter:"The land climbs and whitens. Something antlered with light stands in the pass north — and it will not suffer a fool to pass.",
   trees:seededTrees(5,99,BIOME.mtn,clearEdges), fires:[{x:250,y:150,lit:0}],
@@ -330,34 +333,39 @@ const R=[
  {b:"steppe",name:"MONGOLIA · THE GREAT STEPPE", exits:{e:8,s:12},
   enter:"Grass to the curve of the world, and the wind that once raised empires. Wild horses scatter from you. A people out-rode the sun here, and then the sun went out.",
   trees:seededTrees(2,201,BIOME.steppe,clearEdges), build:[{t:"ger",x:90,y:120},{t:"ger",x:140,y:142}], bush:[{x:220,y:90,ber:1}],
+  fragment:{x:150,y:80,id:"voice",name:"THE FIRST VOICE — the sung memory, older than any letter"}, house:{x:96,y:118,theme:"mud"},
   wild:[{t:"horse",x:120,y:100},{t:"horse",x:180,y:130},{t:"raven",x:60,y:70}], dweller:{x:210,y:110}, fires:[{x:250,y:150,lit:0}], enemies:[{t:"wolf",x:236,y:80}] },
  {b:"steppe",name:"MONGOLIA · KARAKORUM RUINS", exits:{n:11,e:13,s:14},
   enter:"The capital of the Great Khan — or what the grass left of it. A throne-hall's bones. They ruled from here to the edge of the known world.",
   trees:seededTrees(2,202,BIOME.steppe,clearEdges), build:[{t:"palace",x:150,y:108},{t:"ger",x:66,y:142}], slab:{x:236,y:90,say:"'Here sat one who owned the horizon. His name is a sound the wind forgot.'"},
+  way:{x:100,y:150}, house:{x:66,y:140,theme:"mud"},
   wild:[{t:"raven",x:90,y:70}], fires:[], enemies:[{t:"human",x:120,y:142}] },
  {b:"winter",name:"CHINA · THE GREAT WALL", exits:{w:12,e:15},
   enter:"A wall that ran ten thousand li, built to keep the horse-lords out. In the end it kept out nothing. The sea does not respect walls.",
   trees:seededTrees(3,203,BIOME.winter,clearEdges), build:[{t:"wall",x:90,y:100},{t:"wall",x:196,y:120}], fires:[{x:250,y:150,lit:0}],
+  chest:{x:60,y:150,loot:["arrows","knife"]},
   wild:[{t:"raven",x:60,y:70}], enemies:[{t:"wolf",x:150,y:80},{t:"wolf",x:224,y:150}] },
  {b:"winter",name:"CHINA · DROWNED BEIJING", exits:{n:12,e:16,s:17},
   enter:"A capital under grey water and grey snow. Pagodas rise like the last raised hands of the drowned. Twenty million souls, once. Now the wind, and you.",
   trees:seededTrees(2,204,BIOME.winter,clearEdges), build:[{t:"pagoda",x:88,y:112},{t:"pagoda",x:150,y:88},{t:"palace",x:224,y:132}], cars:[{x:120,y:152}], slab:{x:58,y:80,say:"'They pressed slabs of light to their faces here — ten million at once, and each of them alone.'"},
+  fragment:{x:150,y:120,id:"page",name:"THE FIRST PAGE — the oracle bone, the printed word, paper that carried whole minds"},
   wild:[], enemies:[{t:"human",x:180,y:100},{t:"wolf",x:120,y:70}] },
  {b:"steppe",name:"CENTRAL ASIA · SAMARKAND", exits:{w:13,s:16},
   enter:"Blue domes half-swallowed by dune. The Silk Road ran through here — silk, spice, plague, and prayer, all travelling the same road, all ending the same way.",
   trees:seededTrees(1,205,BIOME.steppe,clearEdges), build:[{t:"dome",x:110,y:110},{t:"dome",x:206,y:120}], water:[{x:150,y:152}], bush:[{x:70,y:80,ber:1,k:"apple"}],
+  fragment:{x:150,y:78,id:"alphabet",name:"THE ALPHABET"}, house:{x:240,y:130,theme:"mud"}, way:{x:70,y:150},
   wild:[{t:"raven",x:232,y:70}], fires:[], enemies:[{t:"human",x:150,y:90}] },
- {b:"desert",name:"THE GOBI · THE FURNACE", exits:{n:15,w:14,s:18}, hot:1,
-  enter:"Sand to the horizon, under a sun that never forgot how to burn. Water is life out here, and there is almost none. Find a well before the heat finds you.",
-  trees:[], build:[], water:[{x:70,y:120}], dune:1,
+ {b:"desert",name:"THE GOBI · THE FURNACE", exits:{n:15,w:14,s:27}, hot:1,
+  enter:"Sand to the horizon, under a sun that never forgot how to burn. Water is life out here, and there is almost none. A dead caravanner lies half-drifted over — and the desert keeps clothes better than it keeps people.",
+  trees:[], build:[], water:[{x:70,y:120}], dune:1, chest:{x:210,y:100,loot:["wraps","food"]}, corpse:{x:150,y:150},
   wild:[{t:"raven",x:200,y:70}], fires:[], enemies:[{t:"wolf",x:180,y:120}] },
  {b:"winter",name:"CHINA · THE TEMPLE OF HEAVEN", exits:{n:14},
   enter:"A round temple where emperors once begged the sky for good harvests. The sky stopped listening long ago — it had gone to the moon. But old weapons endured here, and quiet.",
   trees:seededTrees(2,207,BIOME.winter,clearEdges), build:[{t:"pagoda",x:150,y:100}], blade:{x:108,y:132}, fires:[{x:224,y:140,lit:0}], slab:{x:58,y:80,say:"'They asked heaven for rain. Heaven, it turns out, had already left.'"},
   wild:[], enemies:[] },
- {b:"dune",name:"ARABIA · THE EMPTY QUARTER", exits:{n:16,s:19,w:23}, hot:1,
+ {b:"dune",name:"ARABIA · THE EMPTY QUARTER", exits:{n:27,s:19,w:23}, hot:1,
   enter:"The Rub' al Khali — the Empty Quarter. The largest sand-sea on earth, emptier now than its name ever dreamed. Heat like a hand laid on your throat.",
-  trees:[], build:[], water:[{x:250,y:150}], dune:1,
+  trees:[], build:[], water:[{x:250,y:150}], dune:1, chest:{x:80,y:100,loot:["food","arrows"]},
   wild:[{t:"raven",x:80,y:60}], fires:[], enemies:[{t:"human",x:150,y:110}] },
  {b:"dune",name:"ARABIA · MECCA, THE HOUSE", exits:{n:18,s:20}, hot:1,
   enter:"In the valley, a great cube of black stone, draped and silent. A third of the living once turned toward it to pray. It still stands. Whatever it meant, it means it yet.",
@@ -366,10 +374,12 @@ const R=[
  {b:"jungle",name:"INDIA · THE JUNGLE TEMPLE", exits:{n:19}, hot:1,
   enter:"The green took India back in a single wet century. A temple tower drowns in vine, its gods still dancing under the moss. The air is thick and warm and watchful.",
   trees:seededTrees(6,210,BIOME.jungle,clearEdges), build:[{t:"shikhara",x:150,y:100}], water:[{x:70,y:140}], bush:[{x:220,y:90,ber:1,k:"mush"},{x:100,y:152,ber:1}], dweller:{x:232,y:120},
+  fragment:{x:150,y:66,id:"zero",name:"THE NOTHING — the number zero, the courage to count what is not there"}, medicine:{x:64,y:110}, house:{x:255,y:152,theme:"rock"}, way:{x:150,y:150},
   wild:[{t:"raven",x:60,y:70}], enemies:[{t:"human",x:180,y:132}] },
  {b:"cave",name:"THE CRYSTAL CAVERN", exits:{n:6,s:22}, cave:1,
   enter:"Deeper. The rock opens into a hall of crystal, lit from no source, humming a note just below hearing. Beautiful — and it has no right to be beautiful, down here.",
   trees:[], build:[{t:"crystal",x:100,y:110},{t:"crystal",x:206,y:120},{t:"crystal",x:150,y:80}], slab:{x:58,y:142,say:"'The crystals grew where the old machines died. They dream the machines dreams.'"},
+  fragment:{x:150,y:120,id:"mark",name:"THE FIRST MARK — a painted hand on stone, the first time a mind said: I was here"},
   wild:[], enemies:[] },
  {b:"cave",name:"THE DEEP", exits:{n:21}, cave:1,
   enter:"The bottom of everything. The crystals pulse like a slow heart. Someone left a blade down here — and something else has been waiting inside the dark for it.",
@@ -381,33 +391,50 @@ const R=[
   wild:[{t:"raven",x:60,y:60}], enemies:[{t:"human",x:206,y:142}] },
  {b:"desert",name:"PETRA · THE ROSE CITY", exits:{s:23,n:25}, hot:1,
   enter:"Cut straight into a cliff of rose-red rock: a temple facade taller than memory. A people carved a whole city from stone here, traded the known world through it, and then simply were not. A spring still runs.",
-  trees:[], build:[{t:"petra",x:150,y:112},{t:"ruin",x:58,y:142}], water:[{x:240,y:150}], dweller:{x:100,y:120}, dune:1,
+  trees:[], build:[{t:"petra",x:150,y:112},{t:"ruin",x:58,y:142}], water:[{x:240,y:150}], dweller:{x:100,y:120}, dune:1, house:{x:58,y:128,theme:"rock"}, way:{x:240,y:120},
   wild:[{t:"raven",x:224,y:60}], enemies:[{t:"human",x:206,y:100}] },
- {b:"desert",name:"THE HOLY RUINS · PALESTINE", exits:{s:24}, hot:1, evil:1,
+ {b:"desert",name:"THE HOLY RUINS · PALESTINE", exits:{s:24,e:26}, hot:1, evil:1,
   enter:"An old, holy, broken place — the heart of three faiths, and grief older than all of them. The wind here is WRONG. It moves against itself, warm where it should be cold — and something in it turns, slowly, to face you.",
   trees:[], build:[{t:"dome",x:108,y:110},{t:"skyscraper",x:214,y:122},{t:"ruin",x:150,y:150}], water:[{x:60,y:138}], dweller:{x:180,y:88},
-  wild:[], enemies:[{t:"human",x:132,y:110}] }
+  fragment:{x:70,y:96,id:"grief",name:"THE FIRST GRIEF",needRead:true},
+  wild:[], enemies:[{t:"human",x:132,y:110}] },
+ {b:"desert",name:"MESOPOTAMIA · URUK, THE FIRST CITY", exits:{w:25}, hot:1,
+  enter:"Between two dead rivers, the oldest city of all — the first place humankind stacked itself into walls and called it home. Here reeds were pressed into wet clay, and a mind, for the first time, spoke to a mind not yet born.",
+  trees:[], build:[{t:"petra",x:60,y:130},{t:"ruin",x:230,y:140},{t:"dome",x:150,y:112}], water:[{x:250,y:150}], dune:1,
+  fragment:{x:150,y:70,id:"book",name:"THE BOOK",needRead:true}, house:{x:60,y:126,theme:"mud"}, way:{x:250,y:120}, chest:{x:110,y:150,loot:["blade","medicine"]},
+  slab:{x:230,y:96,say:"'A king named Gilgamesh went to the ends of the world to escape death. He failed. He wrote it down. That is why you can read this.'"},
+  wild:[{t:"raven",x:200,y:60}], enemies:[{t:"human",x:180,y:120}] },
+ {b:"steppe",name:"PERSIA · THE ROYAL ROAD", exits:{n:16,s:18},
+  enter:"The long road between the river-lands and the sand-sea — Persia, where couriers once outran the sun with the king's word. Dead mile-stones. A caravanserai still standing, by some miracle, its door open to the wind.",
+  trees:seededTrees(2,301,BIOME.steppe,clearEdges), build:[{t:"palace",x:150,y:104},{t:"ruin",x:230,y:140}], water:[{x:70,y:150}], slab:{x:250,y:88,say:"'Not snow, nor rain, nor heat, nor dark of night stayed these couriers. The dark of the moon leaving — that stayed them.'"},
+  house:{x:96,y:120,theme:"mud"}, way:{x:150,y:150}, chest:{x:60,y:80,loot:["arrows","food","wraps"]},
+  wild:[{t:"raven",x:200,y:70},{t:"horse",x:120,y:130}], enemies:[{t:"human",x:210,y:110}] }
 ];
 const EXPLORABLE=[0,1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,19,20,23,24,25];
-const MP=[[2,3],[2,2],[3,3],[2,4],[1,3],[4,3],[4,2],[1,4],[0,3],[2,1],[2,0],[0,4],[0,5],[1,5],[1,6],[2,5],[0,6],[2,6],[0,7],[0,8],[1,8],[5,2],[5,3],[3,7],[3,8],[4,8]]; // rough map coords per room
+const MP=[[2,3],[2,2],[3,3],[2,4],[1,3],[4,3],[4,2],[1,4],[0,3],[2,1],[2,0],[0,4],[0,5],[1,5],[1,6],[2,5],[0,6],[2,6],[1,7],[1,8],[2,8],[5,2],[5,3],[3,7],[3,8],[4,8],[5,8],[0,7]]; // rough map coords per room
 let ri=0;
 
 // ---------- input ----------
 function toLocal(e){ const r=cv.getBoundingClientRect(); const cx=(e.touches?e.touches[0].clientX:e.clientX);
   const cy=(e.touches?e.touches[0].clientY:e.clientY); return {x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height*H}; }
 cv.addEventListener("pointerdown",e=>{ e.preventDefault(); actx(); const p=toLocal(e); click(p.x,p.y); });
-addEventListener("keydown",e=>{ if(e.key==="m"||e.key==="M"){muteBtn.click();return;} if(scene.mode==="boot"){startGame();return;} if(e.code==="Space"){e.preventDefault();attack();} });
+addEventListener("keydown",e=>{ if(e.key==="m"||e.key==="M"){muteBtn.click();return;} if(scene.mode==="boot"){startGame();return;}
+  if(e.key==="b"||e.key==="B"){ if(scene.mode==="play"){ if(inv.pack)packOpen=!packOpen; else caption("You have no pack yet — a dead traveller in the EAST carried one."); } return; }
+  if(e.code==="Space"){e.preventDefault();attack();} });
 function walkTo(x,y,cb){ player.tx=Math.max(5,Math.min(W-5,x)); player.ty=Math.max(46,Math.min(H-6,y)); player.arriveCb=cb||null; }
 
 function click(x,y){
   if(scene.mode==="boot"){ startGame(); return; }
   if(fadeDir!==0) return;
   if(inv.mapOpen){ inv.mapOpen=false; return; }
+  if(packOpen){ packOpen=false; return; }
   if(!capDone()){ capShown=capFull.length; capEl.textContent=capFull; if(onCapDone){const c=onCapDone;onCapDone=null;c();} return; }
   if(scene.mode==="san"){ sanClick(x,y); return; }
+  if(scene.mode==="house"){ if(Math.hypot(x-120,y-108)<34){ sleepNow(); } else if(x>250&&y<130&&y>90){ leaveHouse(); } else walkTo(x,y); return; }
   if(scene.mode!=="play") return;
   const rm=R[ri];
   if(x<20 && y>142){ drinkBottle(); return; }   // waterskin on the side
+  if(x>W-22 && y>H-22){ if(inv.pack) packOpen=true; else caption("You have no pack yet. A dead traveller in the EAST carried one."); return; }
   // strike nearest enemy in melee range
   let near=null,nd=99; for(const en of enemies){ if(en.dead)continue; const d=Math.hypot(x-en.x,y-en.y); if(d<nd){nd=d;near=en;} }
   if(near && nd<20){ const pd=Math.hypot(player.x-near.x,player.y-near.y);
@@ -420,19 +447,24 @@ function click(x,y){
   if(rm.water) for(const wl of rm.water){ if(Math.hypot(x-wl.x,y-wl.y)<18){ walkTo(wl.x,wl.y+12,()=>{player.thirst=100;player.water=100;sfxStep();caption("You drink deep, and fill your skin. Cool water. You will live a while longer.");}); return; } }
   if(rm.coat && !rm.coat.got && Math.hypot(x-rm.coat.x,y-rm.coat.y)<16){ walkTo(rm.coat.x,rm.coat.y+10,()=>{rm.coat.got=1;inv.coat=true;setInv();caption("You take the coat. The cold loses some teeth.");}); return; }
   if(rm.shoes && !rm.shoes.got && Math.hypot(x-rm.shoes.x,y-rm.shoes.y)<16){ walkTo(rm.shoes.x,rm.shoes.y+10,()=>{rm.shoes.got=1;inv.shoes=true;setInv();caption("Old boots, still good. Warmer feet, surer steps.");}); return; }
-  if(rm.map && !rm.map.got && Math.hypot(x-rm.map.x,y-rm.map.y)<16){ walkTo(rm.map.x,rm.map.y+10,()=>{rm.map.got=1;inv.map=true;setInv();caption("A charcoal map — a dead traveller's own wandering. Tap the map to open what you have seen.");}); return; }
+  if(rm.map && !rm.map.got && Math.hypot(x-rm.map.x,y-rm.map.y)<16){ walkTo(rm.map.x,rm.map.y+10,()=>{rm.map.got=1;inv.map=true;inv.pack=true;setInv();caption("A charcoal map — the dead traveller's own wandering — and the pack it hung in: ten worn pockets, still good. Tap the map to open the Record. Tap the pack (corner) or press B to open it.");}); return; }
   if(rm.axe && !rm.axe.got && Math.hypot(x-rm.axe.x,y-rm.axe.y)<16){ walkTo(rm.axe.x,rm.axe.y+10,()=>{rm.axe.got=1;belt.axe={name:"axe",dur:16,max:16,dmg:2,range:26};if(!weapon){weapon=belt.axe;eqKey="axe";}setInv();caption("An axe joins your belt. The knife stays. Tap the blade to switch.");}); return; }
   if(rm.blade && !rm.blade.got && Math.hypot(x-rm.blade.x,y-rm.blade.y)<16){ walkTo(rm.blade.x,rm.blade.y+10,()=>{rm.blade.got=1;belt.blade={name:"long blade",dur:28,max:28,dmg:2,range:30};if(!weapon){weapon=belt.blade;eqKey="blade";}setInv();caption("A long blade of old-world steel — longer reach, and it does not tire quickly.");}); return; }
   if(rm.bow && !rm.bow.got && Math.hypot(x-rm.bow.x,y-rm.bow.y)<16){ walkTo(rm.bow.x,rm.bow.y+10,()=>{rm.bow.got=1;inv.bow=true;inv.arrows+=12;setInv();caption("A bow, and a quiver. Tap a distant foe to loose an arrow.");}); return; }
   if(rm.bush) for(const bs of rm.bush){ if(bs.ber && Math.hypot(x-bs.x,y-bs.y)<16){ walkTo(bs.x,bs.y+10,()=>{bs.ber=0;inv.food++;setInv();caption(bs.k==="apple"?"Frozen apples, hard as stone but sweet.":bs.k==="mush"?"Pale mushrooms. Probably fine.":"Bitter berries. Saved for a hungrier hour.");}); return; } }
-  if(rm.slab && Math.hypot(x-rm.slab.x,y-rm.slab.y)<18){ walkTo(rm.slab.x,rm.slab.y+12,()=>caption(rm.slab.say)); return; }
+  if(rm.slab && Math.hypot(x-rm.slab.x,y-rm.slab.y)<18){ walkTo(rm.slab.x,rm.slab.y+12,()=>caption(readText(rm.slab.say))); return; }
+  if(rm.fragment && !rm.fragment.got && Math.hypot(x-rm.fragment.x,y-rm.fragment.y)<20){ walkTo(rm.fragment.x,rm.fragment.y+12,()=>takeFragment(rm.fragment)); return; }
+  if(rm.medicine && !rm.medicine.got && Math.hypot(x-rm.medicine.x,y-rm.medicine.y)<18){ walkTo(rm.medicine.x,rm.medicine.y+10,()=>{ rm.medicine.got=1; inv.medicine=true; setInv(); caption("An overgrown apothecary — jars, dried leaf, a healer's careful hand long stilled. You learn the green art. Now sleep can mend wounds, not only weariness.",{voice:knowledge}); }); return; }
+  if(rm.chest && !rm.chest.got && Math.hypot(x-rm.chest.x,y-rm.chest.y)<18){ walkTo(rm.chest.x,rm.chest.y+10,()=>openChest(rm.chest)); return; }
+  if(rm.way && Math.hypot(x-rm.way.x,y-rm.way.y)<20){ walkTo(rm.way.x+16,rm.way.y+8,()=>bindSoul(rm.way)); return; }
+  if(rm.house && Math.hypot(x-rm.house.x,y-rm.house.y)<22){ walkTo(rm.house.x,rm.house.y+18,()=>enterHouse(rm.house)); return; }
   if(rm.dweller && Math.hypot(x-rm.dweller.x,y-rm.dweller.y)<18){ walkTo(rm.dweller.x+16,rm.dweller.y+8,()=>caption(!knowledge?"The dweller only watches you, and points. It has no words for you — not until you understand.":(rm.dweller.say||DWELL[Math.floor(Math.random()*DWELL.length)]))); return; }
   if(rm.shrine && Math.hypot(x-rm.shrine.x,y-rm.shrine.y)<22){ walkTo(rm.shrine.x+18,rm.shrine.y+8,()=>takeKnowledge()); return; }
   walkTo(x,y);   // just walk — reaching an edge auto-travels
 }
 function travel(dir){
   const rm=R[ri];
-  if(rm.guard && dir==="n" && !gateOpen){ caption("The guardian throws you back like a leaf. 'Not yet,' the wind seems to say. 'You have not seen enough of the world.'"); player.x=W/2;player.y=H/2;player.tx=W/2;player.ty=H/2;player.entryGrace=0.7; sfxHurt(); return; }
+  if(rm.guard && dir==="n" && !gateOpen){ const left=FRAG_TOTAL-frags.size; caption("The guardian throws you back like a leaf. 'Not yet,' the wind seems to say. 'You have gathered "+frags.size+" of "+FRAG_TOTAL+". "+left+" fragment"+(left===1?"":"s")+" of knowledge still sleep in the world. Find them, then pass.'"); player.x=W/2;player.y=H/2;player.tx=W/2;player.ty=H/2;player.entryGrace=0.7; sfxHurt(); return; }
   gotoRoom(rm.exits[dir], dir);
 }
 function attack(){
@@ -447,7 +479,7 @@ function attack(){
 function shoot(tx,ty){ if(!inv.bow||inv.arrows<=0||player.atkCd>0)return; player.atkCd=0.4; inv.arrows--; setInv(); sfxBow();
   const a=Math.atan2(ty-player.y,tx-player.x); arrows.push({x:player.x,y:player.y,vx:Math.cos(a)*170,vy:Math.sin(a)*170,life:1.4}); }
 function killEnemy(en){
-  if(en.t==="ranger" && !gateOpen){ en.hp=6; en.hurt=0.3; en.x+=(en.x<player.x?-10:10); caption("You strike it down — but it reforms from the light. It cannot fall until you have walked all of Asia and the wind turns north."); return; }
+  if(en.t==="ranger" && !gateOpen){ en.hp=6; en.hurt=0.3; en.x+=(en.x<player.x?-10:10); caption("You strike it down — but it reforms from the light. It cannot fall until all seven fragments are yours ("+frags.size+"/"+FRAG_TOTAL+")."); return; }
   en.dead=1; xp+=en.t==="ranger"?5:en.t==="bear"?3:1;
   const drop={wolf:1,bear:4,deer:2,human:0,ranger:0}[en.t]||0; if(drop>0){ inv.food+=drop; }
   if(en.t==="ranger") caption("The guardian steps aside. The wind is with you now. Go north.");
@@ -483,7 +515,7 @@ function gotoRoom(i,from){ ri=i; const rm=R[i]; scene={mode:"play"}; placeEl.tex
   if(i===0 && visited.size<=1){ caption(rm.enter,{cb:()=>{ setTimeout(()=>caption("You must travel EAST, or the cold will have you before you learn its name. A dead traveller left warmth there — and a map.",{cb:()=>{ setTimeout(()=>caption("Tap to walk. Walk to any edge to travel. Tap a beast to fight."),2600); }}),700); }}); }
   else caption(rm.enter, rm.scent?{cb:()=>{ setTimeout(()=>caption("You can smell it now. A soul, ancient, close.",{voice:knowledge}),1400); }}:null);
 }
-function checkGate(){ if(gateOpen) return; if(EXPLORABLE.every(r=>visited.has(r))){ openGate(); } }
+function checkGate(){ if(gateOpen) return; if(frags.size>=FRAG_TOTAL){ openGate(); } }
 function openGate(){ gateOpen=true; windNorth=true; gateStage=1; setWind(0.2);
   caption("The wind turns. It stirs, then rises, and begins to blow north — you feel it pull. It blows for you now. Follow it, to the drowned city.",{voice:true}); }
 function nudgeNorth(){ if(!gateOpen) return; gateStage++;
@@ -502,13 +534,56 @@ function takeKnowledge(){ if(knowledge)return; knowledge=true; sfxChime(); flash
     setTimeout(()=>caption("the wind speaks: you were made to carry us home. this was only the first. and when the seven are yours, so must you be given.",{voice:true,cb:()=>{
       setTimeout(()=>{ scene={mode:"end"}; placeEl.textContent="CH. I — KNOWLEDGE TAKEN"; hintEl.textContent="to be continued — EUROPE, and the LIGHT"; },1500); }}),1100); }}); }
 
+// ---------- quests: the seven fragments & learning to read ----------
+const GLYPH="ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟᚫᚦᛡ";
+function glyph(t){ let o=""; for(const ch of t){ if(/[a-z]/i.test(ch)) o+=GLYPH[(ch.toLowerCase().charCodeAt(0)-97)%GLYPH.length]; else if(/[0-9]/.test(ch)) o+="·"; else o+=ch; } return o; }
+function readText(t){ return (canRead||knowledge)?t:(glyph(t)+"  — (you cannot read the old script yet: find THE ALPHABET, in Samarkand)"); }
+function takeFragment(fr){ if(fr.got)return;
+  if(fr.needRead && !(canRead||knowledge)){ caption(glyph("the script writhes and will not hold still")+" — you cannot read this yet. Find THE ALPHABET first (Samarkand)."); return; }
+  fr.got=1; frags.add(fr.id); sfxChime(); flashT=0.6;
+  if(fr.id==="alphabet"){ canRead=true; caption("You gather THE ALPHABET — the shapes that hold sound. The dead script stops swimming and settles into meaning. You can READ now.  ("+frags.size+"/"+FRAG_TOTAL+" fragments)",{voice:true}); }
+  else caption("A fragment of understanding: "+fr.name+".  You feel it settle into you, heavier and truer.  ("+frags.size+"/"+FRAG_TOTAL+" fragments)",{voice:true});
+  checkGate(); }
+
+// ---------- shelter: enter a house, sleep, heal ----------
+function enterHouse(h){ houseTheme=h.theme||"ruin"; scene={mode:"house"}; placeEl.textContent="SHELTER · out of the wind";
+  hintEl.textContent="tap the bed to sleep · tap the door to leave";
+  player.x=120;player.y=150;player.tx=120;player.ty=150;player.dir="left";player.arriveCb=null; if(!muted)windStop();
+  caption(houseTheme==="mud"?"A mudbrick house, cool and dim. Someone lived a whole life inside these walls. There is a bed, and quiet.":houseTheme==="rock"?"A room cut into the rock, older than nations. Cold stone, but no wind, and a bed of woven reed. It will do.":"Inside the ruin: fallen ceiling, dust like grey snow, and a bed someone died hoping to wake in. Small mercies are still mercies."); }
+function sleepNow(){ if(scene.mode!=="house")return; doFade(()=>{
+  player.stamina=100; player.warmth=100; player.hunger=Math.min(100,player.hunger+15); player.thirst=Math.min(100,player.thirst+10);
+  dayClock=(Math.floor(dayClock/CYCLE)+1)*CYCLE+22;
+  if(inv.medicine){ player.hp=player.maxHp; sfxChime(); caption("You sleep, and tend your wounds with what India taught you — leaf, root, and time. You wake whole, and rested. Dawn, and the world waiting."); }
+  else { if(player.hp<player.maxHp)player.hp=Math.min(player.maxHp,player.hp+1); sfxChime(); caption("You sleep. Your weariness lifts and the cold leaves your bones — but a deeper wound needs more than rest. (Learn medicine in the green south, in India.)"); }
+  }); }
+function leaveHouse(){ doFade(()=>{ const h=R[ri].house; scene={mode:"play"}; placeEl.textContent=R[ri].name;
+  hintEl.textContent="tap to walk · walk to an edge to travel · tap foes to fight";
+  player.x=h.x;player.y=h.y+18;player.tx=player.x;player.ty=player.y;player.dir="down";player.entryGrace=0.6;player.arriveCb=null; if(!muted)windStart(); }); }
+
+// ---------- chests & the dead (loot) ----------
+function openChest(c){ if(c.got)return; c.got=1; sfxChime(); const got=[];
+  for(const it of (c.loot||[])){
+    if(it==="arrows"){ inv.arrows+=8; got.push("arrows ×8"); }
+    else if(it==="knife"){ belt.knife={name:"knife",dur:10,max:10,dmg:1,range:24}; if(!weapon)autoEquip(); got.push("a fresh knife"); }
+    else if(it==="blade"){ belt.blade={name:"long blade",dur:28,max:28,dmg:2,range:30}; if(!weapon)autoEquip(); got.push("a long blade"); }
+    else if(it==="food"){ inv.food+=2; got.push("food ×2"); }
+    else if(it==="wraps"){ inv.wraps=true; got.push("desert wraps — light, pale, made for the heat"); }
+    else if(it==="medicine"){ inv.medicine=true; got.push("a healer's kit"); }
+    else if(it==="coat"){ inv.coat=true; got.push("a coat"); }
+  }
+  setInv(); caption("A chest, still latched after all this time. Inside: "+(got.join(", ")||"nothing but dust and the smell of someone's last day")+"."); }
+
+// ---------- wayshrines: bind your soul, so death is not the beginning ----------
+function bindSoul(w){ checkpoint={ri:ri,x:w.x,y:w.y+18}; sfxChime(); flashT=0.4;
+  caption("You lay your hand on the wayshrine. It warms, and remembers the shape of you. If you fall now, you will wake here — not back at the beginning.",{voice:knowledge}); }
+
 // ---------- fx ----------
 function burst(x,y,col,n){ for(let i=0;i<n;i++){ const a=Math.random()*6.28,s=20+Math.random()*40; parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:0.4,max:0.4,c:col}); } }
 function doFade(cb){ fadeDir=1; fadeCb=cb; }
 
 // ---------- update ----------
-function moveToward(dt){ const dx=player.tx-player.x,dy=player.ty-player.y,d=Math.hypot(dx,dy); const cold=player.warmth<25?0.7:1;
-  if(d>1.5){ player.moving=true; const sp=54*cold*dt; let nx=player.x+dx/d*Math.min(sp,d),ny=player.y+dy/d*Math.min(sp,d);
+function moveToward(dt){ const dx=player.tx-player.x,dy=player.ty-player.y,d=Math.hypot(dx,dy); const cold=player.warmth<25?0.7:1; const tired=player.stamina<20?0.78:1;
+  if(d>1.5){ player.moving=true; const sp=54*cold*tired*dt; let nx=player.x+dx/d*Math.min(sp,d),ny=player.y+dy/d*Math.min(sp,d);
     let ok=true; if(scene.mode==="play"){ for(const t of R[ri].trees){ if(Math.hypot(nx-t.x,ny-(t.y+4))<7){ok=false;break;} } }
     if(ok){player.x=nx;player.y=ny;} else {player.tx=player.x;player.ty=player.y;}
     player.dir=Math.abs(dx)>Math.abs(dy)?(dx<0?"left":"right"):(dy<0?"up":"down");
@@ -523,6 +598,7 @@ function update(dt){
 
   if(scene.mode==="san"){ if(!inv.candleLit){ heartbeat._t=(heartbeat._t||0)+dt; if(heartbeat._t>1.1){heartbeat._t=0;heartbeat();} } if(scene.step===3)moveToward(dt); if(inv.candleLit)candleR=Math.min(70,candleR+90*dt); return; }
   if(scene.mode==="end"){ candleR=Math.min(60,candleR+40*dt); return; }
+  if(scene.mode==="house"){ moveToward(dt); player.stamina=Math.min(100,player.stamina+12*dt); return; }
   if(scene.mode!=="play") return;
 
   const rm=R[ri], B=BIOME[rm.b];
@@ -542,8 +618,14 @@ function update(dt){
   else if(sun>0.6 && rm.b!=="cave"){ player.warmth=Math.min(100,player.warmth+(sun-0.55)*7*dt); } // midday sun warms
   else { player.warmth-=B.cold*gear*(1-sun*0.5)*dt; }                                    // cold, softened by gear + daylight
   player.hunger-=0.55*dt;
-  // heat & thirst (deserts, jungle)
-  if(B.hot){ player.thirst-=B.hot*(0.6+sun*0.8)*dt; if(player.thirst<=0){ player.thirst=0; player.hp-=dt*0.4; if(Math.random()<dt) caption("Your throat is sand. You need water — a well, an oasis."); } }
+  // stamina — drains very slowly; sleep in a house to restore
+  player.stamina=Math.max(0,player.stamina-0.11*dt);
+  if(player.stamina<=0){ player.hp-=dt*0.14; if(Math.random()<dt*0.5&&capDone()) caption("You are exhausted past bearing. Find a house and sleep, or you will simply lie down here."); }
+  else if(player.stamina<20 && Math.random()<dt*0.25 && capDone()) caption("Your legs drag. You need to sleep soon — look for a house.");
+  // heat & thirst (deserts, jungle) — the coat COOKS you in the heat; wraps are made for it
+  if(B.hot){ const heatGear = inv.wraps?0.65 : (inv.coat?1.45:1); player.thirst-=B.hot*(0.6+sun*0.8)*heatGear*dt;
+    if(inv.coat && !inv.wraps && Math.random()<dt*0.12 && capDone()) caption("The coat is an oven out here. You need lighter clothes — desert wraps, off some poor soul who knew better.");
+    if(player.thirst<=0){ player.thirst=0; player.hp-=dt*0.4; if(Math.random()<dt) caption("Your throat is sand. You need water — a well, an oasis, a river."); } }
   else { player.thirst=Math.min(100,player.thirst+4*dt); }  // recover thirst in cooler lands
   if(player.thirst<=0 && player.hp<=0) die("The desert took the last of your water, and then the rest of you.");
   { const dnow=sun>0.5; if(player._wasDay===undefined)player._wasDay=dnow; else if(dnow!==player._wasDay&&capDone()) caption(dnow?"Dawn. The sun climbs over the dead world — and the dark pulls back.":"Night falls. The cold leans in, and the candle is all you have."); player._wasDay=dnow; }
@@ -575,7 +657,15 @@ function update(dt){
   if(rm.shrine){ if(motes.length<20&&Math.random()<dt*8) motes.push({x:player.x+(Math.random()*40-20),y:player.y+(Math.random()*30-15),life:2});
     for(let i=motes.length-1;i>=0;i--){ const m=motes[i]; m.life-=dt; m.x+=(rm.shrine.x-m.x)*dt*0.8; m.y+=(rm.shrine.y-10-m.y)*dt*0.8; if(m.life<=0)motes.splice(i,1); } }
 }
-function die(msg){ if(player._dead)return; player._dead=true; caption(msg,{cb:()=>{ setTimeout(()=>{ player._dead=false; player.hp=player.maxHp; player.warmth=65; player.hunger=Math.max(player.hunger,40); player.thirst=Math.max(player.thirst,55); player.water=Math.max(player.water,60); player.inv=1.5; player.x=W/2;player.y=H/2;player.tx=W/2;player.ty=H/2; enemies=(R[ri].enemies||[]).filter(e=>!(R[ri].guard&&e.t==="ranger"&&gateOpen)).map(mkEnemy); caption("You wake again. The forest does not mourn. It simply waits. Learn faster."); },900); }}); }
+function die(msg){ if(player._dead)return; player._dead=true; caption(msg,{cb:()=>{ setTimeout(()=>{ player._dead=false;
+  player.hp=player.maxHp; player.warmth=72; player.hunger=Math.max(player.hunger,45); player.thirst=Math.max(player.thirst,60); player.water=Math.max(player.water,60); player.stamina=Math.max(player.stamina,65); player.inv=1.5;
+  const cp=checkpoint; const bound=cp.ri!==ri; ri=cp.ri; const rm=R[ri]; scene={mode:"play"}; placeEl.textContent=rm.name;
+  hintEl.textContent="tap to walk · walk to an edge to travel · tap foes to fight";
+  player.x=cp.x;player.y=cp.y;player.tx=cp.x;player.ty=cp.y;player.dir="down";player.entryGrace=0.6;player.arriveCb=null;
+  enemies=(rm.enemies||[]).filter(e=>!(rm.guard&&e.t==="ranger"&&gateOpen)).map(mkEnemy);
+  wildlife=(rm.wild||[]).map(w=>({t:w.t,x:w.x,y:w.y,ph:Math.random()*6,vx:0,vy:0,flee:0})); arrows=[]; parts=[]; motes=[];
+  if(!muted){ windStart(); setWind(BIOME[rm.b].cold>4?0.13:0.06); }
+  caption(bound?"You wake at the last wayshrine that knew your name. The world waited for you. Learn faster.":"You wake again, where you fell. The forest does not mourn — it simply waits. (Touch a wayshrine to be reborn there instead.)"); },900); }}); }
 
 // ---------- render ----------
 function drawGround(B,rm){ px(0,0,W,H,B.g0);
@@ -607,6 +697,38 @@ function sprRuin(x,y){ px(x-12,y+6,24,3,C.shadow); px(x-12,y-11,9,17,C.concreteD
 function sprPetra(x,y){ px(x-18,y+7,36,4,C.shadow); px(x-20,y-40,40,46,"#6a3a2e"); px(x-20,y-40,40,4,"#7a4436"); px(x-14,y-30,28,36,"#7a4a38"); for(let i=-12;i<13;i+=6)px(x+i,y-28,3,32,"#c9a878"); g.fillStyle="#c9a878"; g.beginPath(); g.moveTo(x-15,y-28); g.lineTo(x,y-40); g.lineTo(x+15,y-28); g.closePath(); g.fill(); px(x-3,y-4,6,10,"#20130b"); }
 function sprPort(x,y){ px(x-14,y+6,28,3,C.shadow); px(x-14,y-4,20,10,C.rustD); px(x-14,y-4,20,3,C.rust); px(x-2,y-20,3,16,"#4a5162"); px(x-2,y-20,10,3,"#4a5162"); px(x+6,y-18,3,6,"#4a5162"); px(x+9,y-2,6,8,"#3a4658"); }
 function drawBuild(t,x,y){ ({ger:sprGer,wall:sprWall,pagoda:sprPagoda,dome:sprDome,cube:sprCube,shikhara:sprShikhara,crystal:sprCrystal,station:sprStation,palace:sprPalace,skyscraper:sprSkyscraper,ruin:sprRuin,petra:sprPetra,port:sprPort}[t]||sprPagoda)(x,y); }
+function sprHouse(x,y,theme){ px(x-15,y+8,30,4,C.shadow);
+  const wall=theme==="mud"?"#8a6a44":theme==="rock"?"#7a4a38":C.concreteD, wallH=theme==="mud"?"#a5814f":theme==="rock"?"#9a6a52":C.concrete;
+  px(x-14,y-16,28,24,wall); px(x-14,y-16,28,3,wallH);
+  if(theme==="ruin"){ px(x+3,y-15,11,9,"#0a0f18"); px(x-11,y-12,6,5,"#141a24"); for(let i=0;i<3;i++)px(x-12+i*3,y-16,1,3,"#141a24"); }
+  else { px(x-10,y-11,6,6,"#1a1408"); px(x+4,y-11,6,6,"#1a1408"); px(x-10,y-11,6,1,"#3a2a1a"); }
+  px(x-4,y-3,8,11,"#2a1c10"); px(x-4,y-3,8,2,"#3a2a1a"); px(x+2,y+3,1,1,C.gold);
+  g.save(); g.globalCompositeOperation="lighter"; const p=0.5+Math.sin(T*2.5)*0.2; const gr=g.createRadialGradient(x,y-1,0,x,y-1,22); gr.addColorStop(0,"rgba(255,200,110,"+(0.18*p+0.12)+")"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(x-22,y-22,44,44); g.restore(); }
+function sprChest(x,y,open){ px(x-7,y+4,14,3,C.shadow); px(x-6,y-2,12,7,"#5a3a22"); px(x-6,y-2,12,2,"#7a5232"); if(!open){ px(x-6,y-6,12,4,"#6a4628"); px(x-1,y-2,2,3,C.gold); } else { px(x-6,y-9,12,3,"#4a2e18"); g.save(); g.globalCompositeOperation="lighter"; px(x-4,y-4,8,3,"#3a3020"); g.restore(); } for(let i=-4;i<5;i+=4)px(x+i,y-1,1,5,"#3a2414"); }
+function sprWayshrine(x,y){ px(x-5,y+5,10,3,C.shadow); px(x-4,y-15,8,20,"#2a3348"); px(x-4,y-15,8,3,"#3a4a68"); px(x-3,y-11,6,1,C.gold); px(x-3,y-8,6,1,C.gold);
+  g.save(); g.globalCompositeOperation="lighter"; const p=0.5+Math.sin(T*3)*0.3; g.globalAlpha=p; px(x-2,y-6,4,4,C.spirit); const gr=g.createRadialGradient(x,y-8,0,x,y-8,22); gr.addColorStop(0,"rgba(127,224,200,.42)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(x-22,y-30,44,44); g.restore(); g.globalAlpha=1; }
+function sprFragment(x,y){ const b=0.6+Math.sin(T*4)*0.35; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(x,y-4,0,x,y-4,16); gr.addColorStop(0,"rgba(255,220,140,"+(0.5+b*0.4)+")"); gr.addColorStop(1,"rgba(255,220,140,0)"); g.fillStyle=gr; g.fillRect(x-16,y-20,32,32); g.restore(); g.fillStyle=C.gold; g.font="11px 'Courier New',monospace"; g.textAlign="center"; g.textBaseline="middle"; g.fillText("✶",x,y-4); g.textBaseline="top"; g.textAlign="left"; }
+function drawHouse(){ const th=houseTheme; const wall=th==="mud"?"#3a2c18":th==="rock"?"#3a241c":"#1a2230", floor=th==="mud"?"#2a1f12":th==="rock"?"#241610":"#12161f", beam=th==="ruin"?"#141a26":"#2e2214";
+  px(0,0,W,H,wall); px(0,118,W,H-118,floor);
+  for(let i=0;i<W;i+=22)px(i,40,3,80,beam); px(0,116,W,3,beam);
+  px(206,48,44,38,"#0a0f18"); px(206,48,44,3,"#3a2e1a"); px(226,48,2,38,"#3a2e1a"); px(206,66,44,2,"#3a2e1a");
+  g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(228,67,0,228,67,64); gr.addColorStop(0,"rgba(255,210,120,.34)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(160,16,130,130); g.restore();
+  const bx=120,by=104; px(bx-26,by+4,52,16,"#2a1c10"); px(bx-26,by,52,20,"#3a2a1a"); px(bx-26,by,52,4,"#5a4028");
+  px(bx-24,by-9,18,11,"#c9b7a0"); px(bx-20,by-7,11,7,"#e8dcc4"); px(bx-4,by+3,28,11,"#6a4a5a"); px(bx-4,by+3,28,3,"#7a5a6a");
+  px(266,92,22,32,"#2a1c10"); px(266,92,22,3,"#3a2a1a"); px(282,108,2,2,C.gold);
+  sprPlayer(player.x,player.y,player.dir,player.phase,false);
+  g.fillStyle=C.gold; g.font="7px 'Courier New',monospace"; g.textAlign="center"; g.fillText("bed — sleep",bx,by+28); g.fillText("door",277,H-6); g.textAlign="left"; }
+function drawPack(){ g.fillStyle="rgba(8,10,20,.95)"; g.fillRect(0,0,W,H);
+  g.textAlign="center"; g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("- THE TRAVELLER'S PACK · 10 -",W/2,12);
+  const L=[]; ["knife","axe","blade"].forEach(k=>{ if(belt[k]&&belt[k].dur>0)L.push(belt[k].name+" ("+belt[k].dur+")"); });
+  if(inv.bow)L.push("bow · "+inv.arrows+" arrows"); if(inv.candle)L.push("candle · soul-light");
+  if(inv.coat)L.push("coat · for the cold north"); if(inv.wraps)L.push("desert wraps · for the heat");
+  if(inv.shoes)L.push("boots"); if(inv.food>0)L.push("food ×"+inv.food);
+  if(inv.medicine)L.push("healer's kit"); if(inv.map)L.push("the Record (map)");
+  const ox=22,oy=24,cw=134,ch=15;
+  for(let i=0;i<10;i++){ const cx=ox+(i%2)*152, cy=oy+((i/2)|0)*ch; g.fillStyle=i<L.length?"#141d3a":"#0b1024"; g.fillRect(cx,cy,cw,12); g.strokeStyle="#263468"; g.lineWidth=1; g.strokeRect(cx+0.5,cy+0.5,cw-1,11); if(i<L.length){ g.fillStyle=C.phos; g.font="7px 'Courier New',monospace"; g.textAlign="left"; g.fillText(L[i].slice(0,24),cx+4,cy+8.5); } }
+  g.textAlign="center"; g.fillStyle=C.gold; g.font="7px 'Courier New',monospace"; g.fillText("fragments of knowledge gathered: "+frags.size+" / "+FRAG_TOTAL,W/2,H-19);
+  g.fillStyle="#7d8ec9"; g.fillText("tap / press B to close",W/2,H-9); g.textAlign="left"; }
 function drawEvil(){ g.save(); const a=0.22+Math.sin(T*1.7)*0.08; const gr=g.createRadialGradient(W/2,H/2,26,W/2,H/2,190); gr.addColorStop(0,"rgba(50,0,10,0)"); gr.addColorStop(1,"rgba(95,0,22,"+(0.5+a)+")"); g.fillStyle=gr; g.fillRect(0,0,W,H); g.strokeStyle="rgba(160,30,40,0.4)"; g.lineWidth=1; for(let i=0;i<16;i++){ const yy=((i*13)+ (T*45))%H, xx=((i*31)+ T*70)%W; g.beginPath(); g.moveTo(xx,yy); g.lineTo(xx-11,yy-3); g.stroke(); } g.restore(); }
 function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   if(rm.cars) for(const c of rm.cars) sprCar(c.x,c.y);
@@ -621,6 +743,10 @@ function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   if(rm.blade&&!rm.blade.got) sprBladeItem(rm.blade.x,rm.blade.y);
   if(rm.bow&&!rm.bow.got) sprBowPick(rm.bow.x,rm.bow.y);
   if(rm.water) for(const wl of rm.water) sprWell(wl.x,wl.y);
+  if(rm.house) sprHouse(rm.house.x,rm.house.y,rm.house.theme);
+  if(rm.chest) sprChest(rm.chest.x,rm.chest.y,rm.chest.got);
+  if(rm.medicine&&!rm.medicine.got) sprSlab(rm.medicine.x,rm.medicine.y);
+  if(rm.way) sprWayshrine(rm.way.x,rm.way.y);
   if(rm.fires) for(const f of rm.fires) sprFire(f.x,f.y,f.lit,T);
   if(rm.dweller) sprDweller(rm.dweller.x,rm.dweller.y,T);
   if(rm.shrine) sprShrine(rm.shrine.x,rm.shrine.y,T);
@@ -628,8 +754,9 @@ function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   if(rm.build) for(const b of rm.build) ents.push({y:b.y,d:()=>drawBuild(b.t,b.x,b.y)});
   for(const w of wildlife){ ents.push({y:w.y,d:()=>{ const dir=player.x<w.x?"left":"right"; if(w.t==="deer")sprDeer(w.x,w.y,dir); else if(w.t==="raven")sprRaven(w.x,w.y); else if(w.t==="horse")sprHorse(w.x,w.y,dir); else sprDeer(w.x,w.y,dir); }}); }
   for(const en of enemies){ if(en.dead)continue; ents.push({y:en.y,d:()=>{ if(en.hurt>0)g.globalAlpha=0.6; if(en.t==="wolf")sprWolf(en.x,en.y,en.dir,(en.phase|0)%2); else if(en.t==="human")sprHuman(en.x,en.y,en.dir,(en.phase|0)%2); else if(en.t==="bear")sprBear(en.x,en.y,en.dir,(en.phase|0)%2); else sprRanger(en.x,en.y,en.phase); g.globalAlpha=1; }}); }
-  const blink=player.inv>0&&((T*12)|0)%2; if(!blink) ents.push({y:player.y,d:()=>sprPlayer(player.x,player.y,player.dir,player.phase,inv.coat)});
+  const blink=player.inv>0&&((T*12)|0)%2; if(!blink) ents.push({y:player.y,d:()=>sprPlayer(player.x,player.y,player.dir,player.phase,inv.coat&&!B.hot)});
   ents.sort((a,b)=>a.y-b.y); for(const e of ents)e.d();
+  if(rm.fragment&&!rm.fragment.got) sprFragment(rm.fragment.x,rm.fragment.y);
   for(const a of arrows){ px(a.x-1,a.y-1,3,2,"#d8cdb0"); }
   if(player.attackT>0){ const dx={left:-1,right:1,up:0,down:0}[player.dir]||0,dy={up:-1,down:1,left:0,right:0}[player.dir]||0; g.strokeStyle="#eef2fb"; g.globalAlpha=player.attackT*4; g.beginPath(); g.arc(player.x+dx*10,player.y+dy*10,10,0,6.28); g.stroke(); g.globalAlpha=1; }
   for(const m of motes){ g.globalAlpha=Math.min(0.7,m.life); px(m.x,m.y,1,1,C.spirit); g.globalAlpha=1; }
@@ -648,22 +775,38 @@ function drawBeacons(){ const rm=R[ri],by=Math.sin(T*4)*2; const spark=(x,y)=>{ 
     const c=gold?"rgba(255,207,92,":"rgba(127,240,176,"; const gr=g.createRadialGradient(mx,my,0,mx,my,17); gr.addColorStop(0,c+"0.75)"); gr.addColorStop(1,c+"0)"); g.fillStyle=gr; g.fillRect(mx-17,my-17,34,34); g.restore(); };
   if(ex.n!=null)opening(W/2,47,windNorth); if(ex.s!=null)opening(W/2,H-7,false);
   if(ex.w!=null)opening(6,H/2,false); if(ex.e!=null)opening(W-6,H/2, ri===0&&!inv.map); }
-function drawMap(){ g.fillStyle="rgba(8,10,20,.93)"; g.fillRect(0,0,W,H);
-  g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.textAlign="center"; g.fillText("- THE MAP (what you have seen) -",W/2,12);
-  const ox=46,oy=26,cw=28,ch=16;
-  g.strokeStyle="#3a4a6a"; g.lineWidth=1;
-  for(let i=0;i<R.length;i++){ if(!visited.has(i))continue; const ex=R[i].exits; for(const d in ex){ const j=ex[d]; if(j==null||!visited.has(j))continue; const a=MP[i],b=MP[j]; g.beginPath(); g.moveTo(ox+a[0]*cw,oy+a[1]*ch); g.lineTo(ox+b[0]*cw,oy+b[1]*ch); g.stroke(); } }
-  for(let i=0;i<R.length;i++){ const p=MP[i],x=ox+p[0]*cw,y=oy+p[1]*ch;
-    if(i===ri){ g.fillStyle=C.gold; g.fillRect(x-4,y-4,8,8); }
-    else if(visited.has(i)){ g.fillStyle=C.phos; g.fillRect(x-3,y-3,6,6); } }
-  g.fillStyle=C.phos; g.font="7px 'Courier New',monospace"; g.fillText(R[ri].name.replace("ASIA · ",""),W/2,H-20);
-  g.fillStyle="#7d8ec9"; g.fillText("tap to close",W/2,H-9); g.textAlign="left"; }
+function drawMap(){ // THE RECORD — a weathered chart of drowned Asia
+  px(0,0,W,H,"#08131c");                                   // the risen sea
+  let s=7; const rn=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};
+  for(let i=0;i<90;i++)px(rn()*W,14+rn()*(H-26),1,1,"#122436");   // wave speckle
+  const ox=40,oy=30,cw=30,ch=17; const pos=i=>({x:ox+MP[i][0]*cw,y:oy+MP[i][1]*ch});
+  // land: tan haze under every seen region + its neighbours
+  g.save(); g.globalCompositeOperation="lighter";
+  for(let i=0;i<R.length;i++){ if(!visited.has(i))continue; const p=pos(i); const gr=g.createRadialGradient(p.x,p.y,0,p.x,p.y,16); gr.addColorStop(0,"rgba(70,58,32,.9)"); gr.addColorStop(1,"rgba(70,58,32,0)"); g.fillStyle=gr; g.fillRect(p.x-16,p.y-16,32,32); }
+  g.restore();
+  // inked routes
+  g.strokeStyle="#7a6236"; g.lineWidth=1;
+  for(let i=0;i<R.length;i++){ if(!visited.has(i))continue; const ex=R[i].exits; for(const d in ex){ const j=ex[d]; if(j==null||!visited.has(j))continue; const a=pos(i),b=pos(j); g.beginPath(); g.moveTo(a.x,a.y); g.lineTo(b.x,b.y); g.stroke(); } }
+  // nodes + quest glyphs
+  for(let i=0;i<R.length;i++){ if(!visited.has(i))continue; const p=pos(i);
+    g.fillStyle=(i===ri)?C.gold:C.phos; g.fillRect(p.x-2,p.y-2,4,4);
+    if(i===ri){ g.strokeStyle=C.gold; g.lineWidth=1; const r=4+Math.sin(T*4)*1.5; g.strokeRect(p.x-r,p.y-r,r*2,r*2); }
+    if(FRAGROOM[i] && !frags.has(FRAGROOM[i])){ g.save(); g.globalAlpha=0.5+Math.sin(T*4)*0.4; g.fillStyle=C.gold; g.font="9px 'Courier New',monospace"; g.textAlign="center"; g.fillText("✶",p.x,p.y-4); g.restore(); }
+  }
+  g.textAlign="center";
+  g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("THE RECORD — drowned Asia",W/2,12);
+  g.fillStyle=C.phos; g.font="7px 'Courier New',monospace"; g.fillText(R[ri].name,W/2,H-19);
+  g.fillStyle="#c9a24a"; g.fillText("✶ a quest waits here   ·   fragments "+frags.size+"/"+FRAG_TOTAL+"   ·   tap to close",W/2,H-9);
+  g.textAlign="left"; }
 function drawAlerts(){ for(const en of enemies){ if(en.dead||!en.aggroOn)continue; const x=en.x,y=en.y-(en.t==="bear"?22:18),by=Math.sin(T*9)*1.5; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(x,y+by,0,x,y+by,11); gr.addColorStop(0,"rgba(255,207,92,.85)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(x-11,y-11+by,22,22); g.restore(); g.fillStyle=C.gold; g.fillRect(x-1,y-7+by,2,7); g.fillRect(x-1,y+2+by,2,2); } }
 function applyDark(a){ dg.clearRect(0,0,W,H); dg.fillStyle="rgba(4,6,14,"+a+")"; dg.fillRect(0,0,W,H); dg.globalCompositeOperation="destination-out";
   const cut=(cx,cy,r)=>{const gr=dg.createRadialGradient(cx,cy,0,cx,cy,r);gr.addColorStop(0,"rgba(0,0,0,1)");gr.addColorStop(.6,"rgba(0,0,0,.85)");gr.addColorStop(1,"rgba(0,0,0,0)");dg.fillStyle=gr;dg.fillRect(cx-r,cy-r,r*2,r*2);};
   if(candleR>1)cut(player.x,player.y,candleR*flick);
   if(scene.mode==="play"&&R[ri].fires) for(const f of R[ri].fires){ if(f.lit)cut(f.x,f.y-4,44*flick); }
   if(scene.mode==="play"&&R[ri].shrine)cut(R[ri].shrine.x,R[ri].shrine.y-12,40);
+  if(scene.mode==="play"&&R[ri].house)cut(R[ri].house.x,R[ri].house.y-2,38);
+  if(scene.mode==="play"&&R[ri].way)cut(R[ri].way.x,R[ri].way.y-8,34);
+  if(scene.mode==="play"&&R[ri].fragment&&!R[ri].fragment.got)cut(R[ri].fragment.x,R[ri].fragment.y-4,36);
   if(scene.mode==="san"&&scene.step>=1&&!inv.candleLit)cut(160,64,26);
   dg.globalCompositeOperation="source-over"; g.drawImage(dark,0,0);
   if(candleR>1){ g.save(); g.globalCompositeOperation="lighter"; const r=candleR*flick*0.9; const gr=g.createRadialGradient(player.x,player.y-2,0,player.x,player.y-2,r); gr.addColorStop(0,"rgba(255,180,80,.26)"); gr.addColorStop(.5,"rgba(240,130,40,.1)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(player.x-r,player.y-2-r,r*2,r*2); g.restore(); } }
@@ -683,8 +826,15 @@ function drawHUD(){
   // THIRST — water droplet
   const tc=player.thirst<25?"#e05a5a":"#4aa8e0"; px(ix+2,18,1,1,tc); px(ix+1,19,3,1,tc); px(ix,20,5,3,tc); px(ix+1,23,3,1,tc); px(ix+1,20,1,1,"#cfe8ff");
   bar(W-40,20,player.thirst,tc);
+  // STAMINA — crescent (rest)
+  const stc=player.stamina<20?"#c98af0":"#9a7ad0"; px(ix+1,25,4,1,stc); px(ix,26,2,4,stc); px(ix+1,30,4,1,stc); px(ix+3,26,2,4,"#0a0f1a");
+  bar(W-40,27,player.stamina,stc);
   drawDayNight();
   drawSkin();
+  // quest counter
+  g.fillStyle=C.gold; g.font="7px 'Courier New',monospace"; g.fillText("✶ "+frags.size+"/"+FRAG_TOTAL,4,36);
+  // backpack icon (bottom-right, tap or B)
+  if(inv.pack){ const bxp=W-14,byp=H-13; px(bxp-6,byp-7,13,12,"#3a2a1a"); px(bxp-6,byp-7,13,3,"#5a4028"); px(bxp-3,byp-9,7,3,"#4a3422"); px(bxp-4,byp-2,9,5,"#2a1c10"); px(bxp,byp,1,1,C.gold); }
   if(knowledge){ g.fillStyle=C.gold; g.font="7px 'Courier New',monospace"; g.fillText("LVL 1  XP "+xp,20,H-6); }
 }
 function drawDayNight(){ // sun/moon index, top-left under the hearts
@@ -725,8 +875,10 @@ function render(){
   else if(scene.mode==="play"){ drawScene(); const B2=BIOME[R[ri].b]; const s=sunNow(); const dk=R[ri].b==="cave"?B2.dark:Math.max(0.06,B2.dark*(1-s*0.92)); applyDark(dk);
     if(R[ri].b!=="cave"&&s>0.45){ g.save(); g.globalCompositeOperation="lighter"; g.globalAlpha=(s-0.45)*0.5; g.fillStyle=R[ri].hot?"#ffcf8a":"#9fc0e0"; g.fillRect(0,0,W,H); g.restore(); } // daylight wash
     drawFrost(); drawBeacons(); drawAlerts(); if(R[ri].evil) drawEvil(); drawHUD(); }
+  else if(scene.mode==="house"){ drawHouse(); drawHUD(); }
   else if(scene.mode==="end"){ drawScene(); applyDark(0.5); drawHUD(); g.fillStyle="rgba(5,10,7,.5)"; g.fillRect(0,0,W,H); g.textAlign="center"; g.fillStyle=C.gold; g.font="10px 'Courier New',monospace"; g.fillText("KNOWLEDGE",W/2,84); g.fillStyle=C.spirit; g.font="7px 'Courier New',monospace"; g.fillText("the world boots up",W/2,98); g.textAlign="left"; }
   if(inv.mapOpen && scene.mode==="play") drawMap();
+  if(packOpen && scene.mode==="play") drawPack();
   if(flashT>0){ g.fillStyle="rgba(220,240,255,"+Math.min(1,flashT)+")"; g.fillRect(0,0,W,H); }
   if(fade>0){ g.fillStyle="rgba(3,5,12,"+fade+")"; g.fillRect(0,0,W,H); }
 }

@@ -117,3 +117,26 @@ of **Hellblade** (as text). The world grows **literally darker** each continent 
 ## BUILD PLAN
 Vertical slice first: **Continent One — Russia / Knowledge** (systems-light by design), then scale the
 proven engine, re-dressed, to each continent.
+
+---
+
+## CHAPTER ONE — THE QUEST CANON (locked 2026-08)
+Chapter One (Asia) is deliberately **simple**: it is the chapter of *learning*. Later continents grow complex; here the player learns to live and to KNOW. The spirit of Knowledge = **learning to READ**. Before it, written script shows as unreadable glyphs and dwellers only point; each language-fragment resolves more of it; taking Knowledge boots the whole UI online.
+
+### The 7 Memory-Fragments (gather all → the guardian's exam is passed → take Knowledge)
+1. **The First Mark** — the Crystal Cavern / deep cave: the painted hand, symbol before language.
+2. **The First Voice** — the Mongolian steppe: the sung epic, memory before writing.
+3. **The First Page** — drowned Beijing / China: oracle bone and the printed word.
+4. **The Nothing (zero)** — India: the number, and abstraction; India also teaches MEDICINE.
+5. **The Alphabet** — Samarkand, the crossroads: the shapes that hold sound. *Unlocks READING.*
+6. **The Book** — Mesopotamia (Uruk/Babylon): found, unreadable until you have the Alphabet; once read, it says GO NORTH.
+7. **The First Grief** — the Levant (Palestine): read the sorrow in the ruins; needs reading; the evil winds begin here.
+
+### Systems (Chapter One)
+- **Four survival stats:** warmth, hunger, thirst, and **stamina** (drains very slowly; restored by SLEEPING in a house).
+- **Houses:** enter → interior screen → sleep. Sleep restores stamina + warmth; heals wounds only after MEDICINE is learned in India.
+- **Wayshrines:** scattered checkpoints; touch to bind your soul → death returns you there, not to the start.
+- **Backpack (10 slots):** inherited from the dead traveller (with the map); holds clothes, spare weapons, food, medicine.
+- **Climate clothes:** the coat warms the north but overheats you in the south; find **desert wraps** in hot-land chests. Clothes come from **chests** and **dead travellers**.
+- **The Record:** a weathered chart of drowned Asia — coastlines eaten by the sea, dead airports, olden streets — your route inked in, a ✶ glyph pulsing on every region that still holds an uncollected fragment.
+- **The guardian** is the exam: it stands aside only when all 7 fragments are gathered.
