@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>GARBHA — Chapter One: Asia</title>
+<title>BARZAKH — Chapter One: Asia</title>
 <style>
   :root{ --edge:#2b3a72; --phos:#7ff0b0; --gold:#ffcf5c; --term:"Courier New",Courier,monospace; }
   *{margin:0;padding:0;box-sizing:border-box}
@@ -56,7 +56,7 @@
 <body>
 <div class="machine">
   <div class="topbar">
-    <span><span class="lamp"></span>GARBHA.EXE</span>
+    <span><span class="lamp"></span>BARZAKH.EXE</span>
     <span class="right" id="place">CH. I — ASIA</span>
   </div>
   <div class="screen">
@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v23 · every star is grabbable";
+const W=320,H=200, BUILD="v24 · BARZAKH";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -497,7 +497,7 @@ function killEnemy(en){
 function lightFire(f){ if(!inv.candleLit){caption("Nothing to light it with.");return;} f.lit=1; sfxLight(); caption("The fire catches. Warmth. Stand close and thaw."); }
 
 // ---------- sanctuary ----------
-function startGame(){ scene={mode:"san",step:0}; placeEl.textContent="GARBHA — THE WOMB"; player.x=160;player.y=118;player.tx=160;player.ty=118; candleR=0; hintEl.textContent="";
+function startGame(){ scene={mode:"san",step:0}; placeEl.textContent="BARZAKH — THE WOMB"; player.x=160;player.y=118;player.tx=160;player.ty=118; candleR=0; hintEl.textContent="";
   caption("You wake in a dark room. You do not know why. You do not know where.",{cb:()=>{ setTimeout(()=>caption("It is dark. Your heart is beating too fast.",{cb:()=>{ setTimeout(()=>{scene.step=1;hintEl.textContent="click the golden arrow";caption("Something glints in the black. It wants you to reach for it.");},600); }}),600); }}); }
 function sanClick(x,y){
   if(scene.step===1){ if(Math.hypot(x-160,y-70)<40){ sfxChime(); scene.step=2; hintEl.textContent="click the candle"; caption("A box has opened. Inside: a candle. a knife. and something to munch on."); } return; }
@@ -926,7 +926,7 @@ function drawSan(){ px(0,0,W,H,C.ink); for(let y=64;y<176;y+=16)for(let x=40;x<2
   if(inv.candleLit||scene.step===3)sprPlayer(player.x,player.y,player.dir,player.phase,false); }
 function render(){
   if(scene.mode==="boot"){ px(0,0,W,H,C.night); g.fillStyle=C.phos; g.font="8px 'Courier New',monospace"; g.textBaseline="top";
-    const L=["GARBHA  //  the golden womb","chapter one : asia","","> loading dream.exe .............. ok","> memory ....................... corrupt","> you ......................... unborn"];
+    const L=["BARZAKH  //  the in-between","chapter one : asia","","> loading dream.exe .............. ok","> memory ....................... corrupt","> you ......................... unborn"];
     for(let i=0;i<L.length;i++)g.fillText(L[i],14,28+i*12); if(Math.floor(T*2)%2===0){g.fillStyle=C.gold;g.fillText("> CLICK / ANY KEY TO BE BORN",14,28+7*12);}
     g.fillStyle="#3f9a6a"; g.fillText("build "+BUILD+"  (if this isn't the latest, hard-refresh: Cmd+Shift+R)",14,H-16); return; }
   if(scene.mode==="san"){ drawSan(); applyDark(inv.candleLit?0.86:0.985); if(scene.step===1&&!inv.candleLit)drawArrow(); if(scene.step===2&&!inv.candleLit)drawItems();
