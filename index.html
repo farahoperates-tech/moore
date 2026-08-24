@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v22 · wear clothes & use your pack";
+const W=320,H=200, BUILD="v23 · every star is grabbable";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -548,9 +548,9 @@ const GLYPH="ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜ�
 function glyph(t){ let o=""; for(const ch of t){ if(/[a-z]/i.test(ch)) o+=GLYPH[(ch.toLowerCase().charCodeAt(0)-97)%GLYPH.length]; else if(/[0-9]/.test(ch)) o+="·"; else o+=ch; } return o; }
 function readText(t){ return (canRead||knowledge)?t:(glyph(t)+"  — (you cannot read the old script yet: find THE ALPHABET, in Samarkand)"); }
 function takeFragment(fr){ if(fr.got)return;
-  if(fr.needRead && !(canRead||knowledge)){ caption(glyph("the script writhes and will not hold still")+" — you cannot read this yet. Find THE ALPHABET first (Samarkand)."); return; }
   fr.got=1; frags.add(fr.id); sfxChime(); flashT=0.6;
   if(fr.id==="alphabet"){ canRead=true; caption("You gather THE ALPHABET — the shapes that hold sound. The dead script stops swimming and settles into meaning. You can READ now.  ("+frags.size+"/"+FRAG_TOTAL+" fragments)",{voice:true}); }
+  else if(fr.needRead && !canRead) caption("A fragment of grief and old writing: "+fr.name+". You take it — though its full meaning stays veiled until you learn to READ (the Alphabet, in Samarkand).  ("+frags.size+"/"+FRAG_TOTAL+" fragments)",{voice:true});
   else caption("A fragment of understanding: "+fr.name+".  You feel it settle into you, heavier and truer.  ("+frags.size+"/"+FRAG_TOTAL+" fragments)",{voice:true});
   checkGate(); }
 
