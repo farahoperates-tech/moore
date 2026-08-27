@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v24 · BARZAKH";
+const W=320,H=200, BUILD="v25 · Moscow, lakes & a living map";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -315,7 +315,7 @@ const R=[
   enter:"Grey water to the edge of the world. Cities sleep beneath it. A figure stands at the tideline, saying nothing, pointing out at the waves.",
   trees:seededTrees(4,55,BIOME.sea,(x,y)=>y>120||clearEdges(x,y)), dweller:{x:150,y:118,say:"'The Warming took them,' it says. 'They built walls against the sea. The sea was patient.'"}, fires:[{x:60,y:80,lit:0}],
   wild:[{t:"raven",x:200,y:60}], enemies:[] },
- {b:"winter",name:"ASIA · TVER RUINS", exits:{s:2,w:1,e:6},
+ {b:"winter",name:"ASIA · TVER RUINS", exits:{s:2,w:1,e:6,n:28},
   enter:"A town the snow is eating. Doorways to nothing. The soulless still walk their old streets.",
   trees:seededTrees(5,66,BIOME.winter,clearEdges), cars:[{x:100,y:150}], tower:{x:230,y:120}, fires:[{x:150,y:90,lit:0}],
   bush:[{x:60,y:80,ber:1,k:"apple"}], dweller:{x:250,y:150}, wild:[], enemies:[{t:"wolf",x:200,y:70},{t:"human",x:120,y:120}] },
@@ -417,10 +417,19 @@ const R=[
   enter:"The long road between the river-lands and the sand-sea — Persia, where couriers once outran the sun with the king's word. Dead mile-stones. A caravanserai still standing, by some miracle, its door open to the wind.",
   trees:seededTrees(2,301,BIOME.steppe,clearEdges), build:[{t:"palace",x:150,y:104},{t:"ruin",x:230,y:140}], water:[{x:70,y:150}], slab:{x:250,y:88,say:"'Not snow, nor rain, nor heat, nor dark of night stayed these couriers. The dark of the moon leaving — that stayed them.'"},
   house:{x:96,y:120,theme:"mud"}, way:{x:150,y:150}, chest:{x:60,y:80,loot:["arrows","food","wraps"]},
-  wild:[{t:"raven",x:200,y:70},{t:"horse",x:120,y:130}], enemies:[{t:"human",x:210,y:110}] }
+  wild:[{t:"raven",x:200,y:70},{t:"horse",x:120,y:130}], enemies:[{t:"human",x:210,y:110}] },
+ {b:"winter",name:"RUSSIA · RED SQUARE, MOSCOW", exits:{s:5,e:29},
+  enter:"A vast square under snow, ringed by ghosts. A cathedral of impossible coloured domes still stands — onions of red and blue and gold, spun sugar that outlived the empire that raised it. The fortress walls beside it have half-melted into the drifts.",
+  trees:seededTrees(2,410,BIOME.winter,clearEdges), build:[{t:"basil",x:150,y:106},{t:"palace",x:58,y:122},{t:"palace",x:246,y:128}], cars:[{x:110,y:150}], fires:[{x:252,y:78,lit:0}], way:{x:150,y:150},
+  slab:{x:60,y:78,say:"'They painted the domes so that heaven, looking down, would always know exactly where the joy was kept.'"},
+  wild:[{t:"raven",x:90,y:60}], enemies:[{t:"human",x:200,y:120}] },
+ {b:"sea",name:"RUSSIA · THE VOLGA MOUTH", exits:{w:28}, sea:1, river:1,
+  enter:"The great river empties into a grey, patient sea that has no far shore anymore. Reeds and birches, and still water clean enough to drink. The world simply ends here, in water. Rest — then go back when you are ready.",
+  trees:seededTrees(5,411,BIOME.sea,(x,y)=>y>116||clearEdges(x,y)), water:[{x:150,y:150}], way:{x:70,y:104}, fires:[{x:252,y:76,lit:0}], bush:[{x:82,y:78,ber:1,k:"apple"}],
+  wild:[{t:"raven",x:206,y:60},{t:"deer",x:120,y:96}], enemies:[] }
 ];
 const EXPLORABLE=[0,1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,19,20,23,24,25];
-const MP=[[2,3],[2,2],[3,3],[2,4],[1,3],[4,3],[4,2],[1,4],[0,3],[2,1],[2,0],[0,4],[0,5],[1,5],[1,6],[2,5],[0,6],[2,6],[1,7],[1,8],[2,8],[5,2],[5,3],[3,7],[3,8],[4,8],[5,8],[0,7]]; // rough map coords per room
+const MP=[[2,3],[2,2],[3,3],[2,4],[1,3],[4,3],[4,2],[1,4],[0,3],[2,1],[2,0],[0,4],[0,5],[1,5],[1,6],[2,5],[0,6],[2,6],[1,7],[1,8],[2,8],[5,2],[5,3],[3,7],[3,8],[4,8],[5,8],[0,7],[1,1],[0,1]]; // rough map coords per room
 let ri=0;
 
 // ---------- input ----------
@@ -707,7 +716,15 @@ function sprSkyscraper(x,y){ px(x-16,y+7,34,4,C.shadow); px(x-8,y-46,16,52,C.con
 function sprRuin(x,y){ px(x-12,y+6,24,3,C.shadow); px(x-12,y-11,9,17,C.concreteD); px(x-12,y-11,9,3,C.concrete); px(x+1,y-6,9,12,C.concreteD); px(x+1,y-6,9,2,C.concrete); px(x-4,y-4,4,6,"#141a24"); for(let i=0;i<6;i++)px(x-14+i*5,y+2,3,3,"#3a3a40"); }
 function sprPetra(x,y){ px(x-18,y+7,36,4,C.shadow); px(x-20,y-40,40,46,"#6a3a2e"); px(x-20,y-40,40,4,"#7a4436"); px(x-14,y-30,28,36,"#7a4a38"); for(let i=-12;i<13;i+=6)px(x+i,y-28,3,32,"#c9a878"); g.fillStyle="#c9a878"; g.beginPath(); g.moveTo(x-15,y-28); g.lineTo(x,y-40); g.lineTo(x+15,y-28); g.closePath(); g.fill(); px(x-3,y-4,6,10,"#20130b"); }
 function sprPort(x,y){ px(x-14,y+6,28,3,C.shadow); px(x-14,y-4,20,10,C.rustD); px(x-14,y-4,20,3,C.rust); px(x-2,y-20,3,16,"#4a5162"); px(x-2,y-20,10,3,"#4a5162"); px(x+6,y-18,3,6,"#4a5162"); px(x+9,y-2,6,8,"#3a4658"); }
-function drawBuild(t,x,y){ ({ger:sprGer,wall:sprWall,pagoda:sprPagoda,dome:sprDome,cube:sprCube,shikhara:sprShikhara,crystal:sprCrystal,station:sprStation,palace:sprPalace,skyscraper:sprSkyscraper,ruin:sprRuin,petra:sprPetra,port:sprPort}[t]||sprPagoda)(x,y); }
+function sprBasil(x,y){ px(x-17,y+8,34,4,C.shadow);
+  px(x-15,y-4,30,12,"#8a4636"); px(x-15,y-4,30,3,"#9a5844");                 // brick base
+  for(let i=0;i<9;i++)px(x-13+i*3,y-1,2,6,"#c9b78a");                        // arcade
+  const dome=(dx,dy,r,col,hl)=>{ g.fillStyle=col; g.beginPath(); g.arc(x+dx,y+dy,r,0,6.28); g.fill();
+    g.beginPath(); g.moveTo(x+dx-r,y+dy); g.lineTo(x+dx,y+dy-r*1.7); g.lineTo(x+dx+r,y+dy); g.closePath(); g.fill();
+    g.fillStyle=hl; px(x+dx-r+1,y+dy-1,2,2,hl); px(x+dx-1,y+dy-r*1.9,2,4,C.gold); };  // spire + cross
+  dome(0,-13,6,"#3a7a5a","#5aa87a"); dome(-9,-8,4,"#c94a3a","#e46a4a"); dome(9,-8,4,"#3a5aa8","#5a7ac8");
+  dome(-5,-15,3,"#d0a030","#f0c050"); dome(5,-15,3,"#8a4aa8","#aa6ac8"); }
+function drawBuild(t,x,y){ ({ger:sprGer,wall:sprWall,pagoda:sprPagoda,dome:sprDome,cube:sprCube,shikhara:sprShikhara,crystal:sprCrystal,station:sprStation,palace:sprPalace,skyscraper:sprSkyscraper,ruin:sprRuin,petra:sprPetra,port:sprPort,basil:sprBasil}[t]||sprPagoda)(x,y); }
 function sprHouse(x,y,theme){ px(x-15,y+8,30,4,C.shadow);
   const wall=theme==="mud"?"#8a6a44":theme==="rock"?"#7a4a38":C.concreteD, wallH=theme==="mud"?"#a5814f":theme==="rock"?"#9a6a52":C.concrete;
   px(x-14,y-16,28,24,wall); px(x-14,y-16,28,3,wallH);
@@ -825,19 +842,30 @@ function drawBeacons(){ const rm=R[ri],by=Math.sin(T*4)*2; const spark=(x,y)=>{ 
   if(ex.n!=null)opening(W/2,47,windNorth); if(ex.s!=null)opening(W/2,H-7,false);
   if(ex.w!=null)opening(6,H/2,false); if(ex.e!=null)opening(W-6,H/2, ri===0&&!inv.map); }
 // geographic pixel positions of each room on the Record (Asia laid out N→S, W→E)
-const MAPXY=[[150,74],[150,58],[186,66],[126,80],[96,66],[170,82],[198,92],[100,86],[128,100],[150,44],[150,28],[150,114],[180,122],[212,116],[240,122],[118,130],[120,148],[242,140],[106,172],[104,186],[172,168],[210,110],[224,124],[76,168],[66,156],[54,150],[86,150],[100,158]];
+const MAPXY=[[150,74],[150,58],[186,66],[126,80],[96,66],[170,82],[198,92],[100,86],[128,100],[150,44],[150,28],[150,114],[180,122],[212,116],[240,122],[118,130],[120,148],[242,140],[106,172],[104,186],[172,168],[210,110],[224,124],[76,168],[66,156],[54,150],[86,150],[100,158],[136,88],[104,96]];
 // blobs that together make the drowned continent (cx,cy,r)
-const LAND=[[150,58,52],[126,92,52],[150,120,50],[196,112,46],[236,128,36],[112,150,42],[74,156,30],[168,156,40],[152,178,28],[210,118,34],[100,176,26]];
-const MAPLBL=[["SIBERIA",150,50],["MONGOLIA",152,110],["CHINA",228,108],["SILK ROAD",112,136],["INDIA",174,160],["PERSIA",96,150],["ARABIA",104,168],["LEVANT",52,140]];
+const LAND=[[150,58,52],[126,92,52],[150,120,50],[196,112,46],[236,128,36],[112,150,42],[74,156,30],[168,156,40],[152,178,28],[210,118,34],[100,176,26],[112,84,34]];
+const MAPLBL=[["SIBERIA",156,48],["MOSCOW",120,84],["MONGOLIA",152,110],["CHINA",228,108],["SILK ROAD",112,136],["INDIA",174,160],["PERSIA",96,150],["ARABIA",104,168],["LEVANT",52,140]];
+// lakes & oases on the chart (cx,cy,r)
+const LAKES=[[96,72,7],[118,128,6],[150,98,5],[128,150,4],[236,150,5]];
 function drawMap(){ // THE RECORD — a drawn chart of drowned Asia
   px(0,0,W,H,"#081320");                                            // the risen sea
   let s=7; const rn=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};
   for(let i=0;i<70;i++)px(rn()*W,16+rn()*(H-30),rn()<0.5?1:2,1,"#10223a");  // wave speckle
-  // coast halo, then land — overlapping blobs read as a continent, not a grid
-  g.fillStyle="#241d10"; for(const b of LAND){ g.beginPath(); g.arc(b[0],b[1],b[2]+3,0,6.28); g.fill(); }
-  g.fillStyle="#5f5230"; for(const b of LAND){ g.beginPath(); g.arc(b[0],b[1],b[2],0,6.28); g.fill(); }
-  g.fillStyle="#6d5f39"; for(const b of LAND){ g.beginPath(); g.arc(b[0],b[1]-2,b[2]-4,0,6.28); g.fill(); }   // sunlit north edge
-  for(let i=0;i<220;i++){ const x=rn()*W,y=16+rn()*(H-30); if(LAND.some(b=>Math.hypot(x-b[0],y-b[1])<b[2]-2)) px(x,y,1,1,rn()<0.5?"#5a4d2c":"#7a6a40"); } // land texture
+  // coast halo, then biome-tinted land — frozen taiga north → steppe → sand south
+  const band=cy=> cy<78 ? {c:"#20303a",b:"#5c6d63",t:"#7a8c78",x:"#4c5e52"}   // Siberia: cold green-grey, NOT desert
+                : cy<126? {c:"#2a2a16",b:"#6a6636",t:"#82803e",x:"#585426"}   // steppe
+                :         {c:"#2a2010",b:"#7c6438",t:"#907044",x:"#66502a"};  // desert south
+  g.fillStyle="#1a2028"; for(const b of LAND){ g.beginPath(); g.arc(b[0],b[1],b[2]+3,0,6.28); g.fill(); }              // dark coast
+  for(const b of LAND){ const k=band(b[1]); g.fillStyle=k.b; g.beginPath(); g.arc(b[0],b[1],b[2],0,6.28); g.fill(); }
+  for(const b of LAND){ const k=band(b[1]); g.fillStyle=k.t; g.beginPath(); g.arc(b[0],b[1]-2,b[2]-4,0,6.28); g.fill(); }  // sunlit edge
+  for(let i=0;i<240;i++){ const x=rn()*W,y=16+rn()*(H-30),bb=LAND.find(b=>Math.hypot(x-b[0],y-b[1])<b[2]-2); if(bb){ const k=band(bb[1]); px(x,y,1,1,rn()<0.5?k.x:k.t); } }  // land texture
+  // snow speckle over the far north
+  for(let i=0;i<60;i++){ const x=rn()*W,y=16+rn()*46; if(LAND.some(b=>b[1]<80&&Math.hypot(x-b[0],y-b[1])<b[2]-3)) px(x,y,1,1,"#c6d2dc"); }
+  // lakes & oases — blue life on the chart
+  for(const l of LAKES){ g.fillStyle="#183848"; g.beginPath(); g.arc(l[0],l[1],l[2]+1,0,6.28); g.fill(); g.fillStyle="#2f6f8f"; g.beginPath(); g.arc(l[0],l[1],l[2],0,6.28); g.fill(); g.fillStyle="#4f9fc0"; g.beginPath(); g.arc(l[0],l[1]-1,l[2]-2,0,6.28); g.fill(); }
+  // an oasis glint on every place you've been that had water
+  for(let i=0;i<R.length;i++){ if(!visited.has(i)||!R[i].water)continue; const p=MAPXY[i]; g.fillStyle="#4f9fc0"; g.beginPath(); g.arc(p[0]-4,p[1]+3,1.6,0,6.28); g.fill(); }
   // faint region names (geography, always shown)
   g.textAlign="center"; g.font="6px 'Courier New',monospace"; g.fillStyle="rgba(40,32,16,0.75)"; for(const L of MAPLBL) g.fillText(L[0],L[1],L[2]);
   // inked roads between places you have walked
