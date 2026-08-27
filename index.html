@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v25 · Moscow, lakes & a living map";
+const W=320,H=200, BUILD="v26 · lakes, oases, mountainways";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -111,7 +111,9 @@ const BIOME={
   sea:   { g0:"#26303a", g1:"#2e3a46", cA:"#26382c", cB:"#31472f", cH:"#43603b", snow:0.4, precip:"snow",  cold:3.4, dark:0.8 },
   desert:{ g0:"#3a2e1a", g1:"#4a3a22", cA:"#5a4526", cB:"#6a5230", cH:"#8a6a3e", snow:0, precip:"heat", cold:-1.5, dark:0.58, hot:1.5 },
   dune:  { g0:"#4a3a20", g1:"#5c4828", cA:"#6a5230", cB:"#7a5e38", cH:"#9a7644", snow:0, precip:"heat", cold:-1.5, dark:0.52, hot:1.8 },
-  jungle:{ g0:"#132014", g1:"#1c2e1c", cA:"#1e3a22", cB:"#274a2c", cH:"#3a6a40", snow:0, precip:"rain", cold:-0.5, dark:0.72, hot:0.9 }
+  jungle:{ g0:"#132014", g1:"#1c2e1c", cA:"#1e3a22", cB:"#274a2c", cH:"#3a6a40", snow:0, precip:"rain", cold:-0.5, dark:0.72, hot:0.9 },
+  oasis: { g0:"#2a3a1e", g1:"#354720", cA:"#2e5a2c", cB:"#3a6a34", cH:"#5a8a4a", snow:0, precip:"none", cold:-0.8, dark:0.5, hot:0.5 },
+  vale:  { g0:"#1e3020", g1:"#26401f", cA:"#2e5a2c", cB:"#3a6a34", cH:"#5a8a4a", snow:0.1,precip:"rain", cold:0.8, dark:0.6 }
 };
 
 const dark=document.createElement("canvas"); dark.width=W; dark.height=H; const dg=dark.getContext("2d");
@@ -323,7 +325,7 @@ const R=[
   enter:"Out of the wind at last — a cave, and warm. Old hands cached weapons here for whoever came next: a bow, and a long blade of star-metal. Take them.",
   trees:[], blade:{x:110,y:130}, bow:{x:210,y:105}, slab:{x:150,y:66,say:"Scratched into the rock: names, thousands of them, and one line — 'we were here, we were kind, at the end.'"},
   wild:[], enemies:[] },
- {b:"winter",name:"ASIA · THE FROZEN RIVER", exits:{e:3}, river:1,
+ {b:"winter",name:"ASIA · THE FROZEN RIVER", exits:{e:3,n:30}, river:1,
   enter:"A river gone to iron. Something huge drinks at a crack in the ice. It lifts its head. It has seen you.",
   trees:seededTrees(6,77,BIOME.winter,clearEdges), fires:[{x:250,y:90,lit:0}], bush:[{x:60,y:70,ber:1,k:"apple"}], water:[{x:160,y:150}],
   wild:[], enemies:[{t:"bear",x:130,y:120}] },
@@ -372,7 +374,7 @@ const R=[
   enter:"A round temple where emperors once begged the sky for good harvests. The sky stopped listening long ago — it had gone to the moon. But old weapons endured here, and quiet.",
   trees:seededTrees(2,207,BIOME.winter,clearEdges), build:[{t:"pagoda",x:150,y:100}], blade:{x:108,y:132}, fires:[{x:224,y:140,lit:0}], slab:{x:58,y:80,say:"'They asked heaven for rain. Heaven, it turns out, had already left.'"},
   wild:[], enemies:[] },
- {b:"dune",name:"ARABIA · THE EMPTY QUARTER", exits:{n:27,s:19,w:23}, hot:1,
+ {b:"dune",name:"ARABIA · THE EMPTY QUARTER", exits:{n:27,s:19,w:23,e:34}, hot:1,
   enter:"The Rub' al Khali — the Empty Quarter. The largest sand-sea on earth, emptier now than its name ever dreamed. Heat like a hand laid on your throat.",
   trees:[], build:[], water:[{x:250,y:150}], dune:1, chest:{x:80,y:100,loot:["food","arrows"]},
   wild:[{t:"raven",x:80,y:60}], fires:[], enemies:[{t:"human",x:150,y:110}] },
@@ -413,7 +415,7 @@ const R=[
   fragment:{x:150,y:70,id:"book",name:"THE BOOK",needRead:true}, house:{x:60,y:126,theme:"mud"}, way:{x:250,y:120}, chest:{x:110,y:150,loot:["blade","medicine"]},
   slab:{x:230,y:96,say:"'A king named Gilgamesh went to the ends of the world to escape death. He failed. He wrote it down. That is why you can read this.'"},
   wild:[{t:"raven",x:200,y:60}], enemies:[{t:"human",x:180,y:120}] },
- {b:"steppe",name:"PERSIA · THE ROYAL ROAD", exits:{n:16,s:18},
+ {b:"steppe",name:"PERSIA · THE ROYAL ROAD", exits:{n:16,s:18,w:36},
   enter:"The long road between the river-lands and the sand-sea — Persia, where couriers once outran the sun with the king's word. Dead mile-stones. A caravanserai still standing, by some miracle, its door open to the wind.",
   trees:seededTrees(2,301,BIOME.steppe,clearEdges), build:[{t:"palace",x:150,y:104},{t:"ruin",x:230,y:140}], water:[{x:70,y:150}], slab:{x:250,y:88,say:"'Not snow, nor rain, nor heat, nor dark of night stayed these couriers. The dark of the moon leaving — that stayed them.'"},
   house:{x:96,y:120,theme:"mud"}, way:{x:150,y:150}, chest:{x:60,y:80,loot:["arrows","food","wraps"]},
@@ -426,10 +428,39 @@ const R=[
  {b:"sea",name:"RUSSIA · THE VOLGA MOUTH", exits:{w:28}, sea:1, river:1,
   enter:"The great river empties into a grey, patient sea that has no far shore anymore. Reeds and birches, and still water clean enough to drink. The world simply ends here, in water. Rest — then go back when you are ready.",
   trees:seededTrees(5,411,BIOME.sea,(x,y)=>y>116||clearEdges(x,y)), water:[{x:150,y:150}], way:{x:70,y:104}, fires:[{x:252,y:76,lit:0}], bush:[{x:82,y:78,ber:1,k:"apple"}],
-  wild:[{t:"raven",x:206,y:60},{t:"deer",x:120,y:96}], enemies:[] }
+  wild:[{t:"raven",x:206,y:60},{t:"deer",x:120,y:96}], enemies:[] },
+ {b:"winter",name:"SIBERIA · LAKE BAIKAL, THE EYE", exits:{s:7,n:31}, lake:1,
+  enter:"The oldest, deepest lake on earth — a mile of black water under a skin of ice, a fifth of the living world's fresh water held in one cold eye. It is so clear you can see your drowned reflection reaching up. Drink; it is clean.",
+  trees:seededTrees(4,420,BIOME.winter,(x,y)=>y>108||clearEdges(x,y)), water:[{x:150,y:150}], way:{x:58,y:96}, fires:[{x:252,y:78,lit:0}],
+  wild:[{t:"deer",x:90,y:70},{t:"raven",x:222,y:58}], enemies:[] },
+ {b:"mtn",name:"THE ROOF OF THE WORLD", exits:{s:30,n:32},
+  enter:"Up, and up. The air thins to a blade. Peaks stand shoulder to shoulder to the edge of seeing, white and indifferent. Men once dragged salt and prayer over these passes. The wind takes your breath and does not hand it back.",
+  trees:[], build:[{t:"peak",x:66,y:118},{t:"peak",x:150,y:104},{t:"peak",x:240,y:120}], fires:[{x:150,y:152,lit:0}], way:{x:104,y:150},
+  wild:[{t:"raven",x:206,y:58}], enemies:[{t:"wolf",x:186,y:132}] },
+ {b:"mtn",name:"THE SKY STAIR", exits:{s:31,w:33},
+  enter:"A stair of switchbacks cut by hands ten thousand years to dust. Higher than weather. Below, the cloud is a white sea; above, hard stars burn in the daylight. You are nearer the dead moon here than anywhere on earth.",
+  trees:[], build:[{t:"peak",x:58,y:112},{t:"peak",x:198,y:120},{t:"peak",x:262,y:100}], fires:[{x:250,y:150,lit:0}], way:{x:150,y:152},
+  slab:{x:150,y:70,say:"'Higher is not nearer to heaven,' a pilgrim scratched here. 'There is no heaven now. But it is quiet, and quiet is a kind of prayer.'"},
+  wild:[], enemies:[] },
+ {b:"vale",name:"THE HIDDEN VALLEY", exits:{e:32}, lake:1, fall:1,
+  enter:"Beyond the pass, impossibly: a green valley, warm, walled round by white peaks, a waterfall braiding down into a still blue lake. Deer graze unafraid, having never learned fear. A place the drowning and the burning both forgot. Rest here — you have earned it.",
+  trees:seededTrees(7,421,BIOME.vale,(x,y)=>y>118||clearEdges(x,y)), water:[{x:60,y:118}], house:{x:238,y:120,theme:"rock"}, way:{x:150,y:152}, bush:[{x:96,y:78,ber:1,k:"apple"},{x:212,y:80,ber:1,k:"mush"}],
+  wild:[{t:"deer",x:120,y:100},{t:"deer",x:172,y:110},{t:"raven",x:80,y:60}], enemies:[] },
+ {b:"oasis",name:"ARABIA · THE HIDDEN OASIS", exits:{w:18,e:35},
+  enter:"After the sand-sea, a miracle: palms, shade, and a spring welling cold and sweet from nowhere. Doves rustle in the fronds. A caravan's ghost still circles the water. Drink, fill your skin, and breathe.",
+  trees:[], build:[{t:"palm",x:78,y:112},{t:"palm",x:118,y:94},{t:"palm",x:214,y:120}], water:[{x:150,y:140}], house:{x:58,y:150,theme:"mud"}, way:{x:250,y:120}, dweller:{x:182,y:100},
+  wild:[{t:"raven",x:92,y:58}], enemies:[] },
+ {b:"desert",name:"THE SALT — A DEAD SEA'S FLOOR", exits:{w:34}, hot:1, salt:1,
+  enter:"A sea died here and left its bones: salt to the horizon, white and blinding, cracked into a million tiles. Your footsteps are the only sound in the whole world. Beautiful — and it wants to kill you. Do not linger without water.",
+  trees:[], build:[{t:"ruin",x:232,y:130}], dune:1, slab:{x:150,y:78,say:"'They harvested this salt and grew rich and called the sea their servant. The sea is patient. Salt is only what it leaves upon a grave.'"},
+  wild:[{t:"raven",x:80,y:58}], enemies:[{t:"human",x:150,y:120}] },
+ {b:"desert",name:"PERSIA · THE GREAT GORGE", exits:{e:27}, hot:1, river:1, fall:1,
+  enter:"The road drops into a red gorge a river cut over a million years. A ribbon of white water still falls from the rim to feed a green thread along the canyon floor. Cliffs lean close overhead. Cool here, and wet, and watched.",
+  trees:seededTrees(3,430,BIOME.desert,(x,y)=>y<96||clearEdges(x,y)), build:[{t:"ruin",x:58,y:132}], water:[{x:150,y:120}], way:{x:242,y:150}, bush:[{x:92,y:150,ber:1}],
+  wild:[{t:"raven",x:204,y:58},{t:"deer",x:120,y:132}], enemies:[{t:"wolf",x:212,y:110}] }
 ];
 const EXPLORABLE=[0,1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,19,20,23,24,25];
-const MP=[[2,3],[2,2],[3,3],[2,4],[1,3],[4,3],[4,2],[1,4],[0,3],[2,1],[2,0],[0,4],[0,5],[1,5],[1,6],[2,5],[0,6],[2,6],[1,7],[1,8],[2,8],[5,2],[5,3],[3,7],[3,8],[4,8],[5,8],[0,7],[1,1],[0,1]]; // rough map coords per room
+const MP=[[2,3],[2,2],[3,3],[2,4],[1,3],[4,3],[4,2],[1,4],[0,3],[2,1],[2,0],[0,4],[0,5],[1,5],[1,6],[2,5],[0,6],[2,6],[1,7],[1,8],[2,8],[5,2],[5,3],[3,7],[3,8],[4,8],[5,8],[0,7],[1,1],[0,1],[1,0],[0,0],[2,0],[3,0],[3,8],[4,9],[3,9]]; // rough map coords per room
 let ri=0;
 
 // ---------- input ----------
@@ -700,6 +731,14 @@ function drawGround(B,rm){ px(0,0,W,H,B.g0);
     for(let i=0;i<6;i++){ const sx=30+i*48; px(sx,H-24,3,5+((i*5)%8),"#0a0806"); }         // stalagmites
     const gr=g.createRadialGradient(4,H/2,0,4,H/2,62); gr.addColorStop(0,"rgba(120,150,190,.5)"); gr.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle=gr; g.fillRect(0,H/2-62,62,124); } // cave mouth
   if(rm.river){ for(let y=90;y<140;y+=3)px(0,y,W,2,y%6<3?"#3a4658":"#2e3a48"); for(let i=0;i<8;i++)px(rn()*W,92+rn()*44,4,1,C.ice); }
+  if(rm.lake){ g.fillStyle="#1b3c50"; g.beginPath(); g.ellipse(W/2,H-38,126,54,0,0,6.28); g.fill();
+    g.fillStyle="#295a76"; g.beginPath(); g.ellipse(W/2,H-40,118,46,0,0,6.28); g.fill();
+    g.fillStyle="#357a9a"; g.beginPath(); g.ellipse(W/2-14,H-46,86,30,0,0,6.28); g.fill();
+    for(let i=0;i<14;i++)px(rn()*W,H-78+rn()*56,3+rn()*3,1,"#6fb0cf"); }
+  if(rm.salt){ g.globalAlpha=0.62; px(0,50,W,H-50,"#d6d9e0"); g.globalAlpha=1;
+    g.strokeStyle="#aeb3be"; g.lineWidth=1; for(let i=0;i<64;i++){ const x=rn()*W,y=52+rn()*146; g.beginPath(); g.moveTo(x,y); g.lineTo(x+5+rn()*9,y+(rn()<0.5?4:-4)); g.stroke(); }
+    g.globalAlpha=0.25; px(0,50,W,8,"#ffffff"); g.globalAlpha=1; }
+  if(rm.fall){ const fx=150; g.save(); g.globalAlpha=0.85; for(let y=46;y<118;y+=2)px(fx-3+Math.sin((y*0.4)+T*6)*2,y,5,2,"#bcd8ea"); g.restore(); px(fx-9,114,18,4,"#295a76"); for(let i=0;i<6;i++)px(fx-8+rn()*16,112,2,2,"#cfe4f2"); }
 }
 // ---------- architecture of the drowned world ----------
 function sprGer(x,y){ px(x-9,y+5,18,3,C.shadow); px(x-9,y-4,18,9,"#c9bfa8"); px(x-9,y-4,18,3,"#ddd4bf"); g.fillStyle="#b7ac93"; g.beginPath(); g.moveTo(x-10,y-4); g.lineTo(x,y-13); g.lineTo(x+10,y-4); g.closePath(); g.fill(); px(x-2,y-1,4,6,"#5a3a22"); }
@@ -724,7 +763,15 @@ function sprBasil(x,y){ px(x-17,y+8,34,4,C.shadow);
     g.fillStyle=hl; px(x+dx-r+1,y+dy-1,2,2,hl); px(x+dx-1,y+dy-r*1.9,2,4,C.gold); };  // spire + cross
   dome(0,-13,6,"#3a7a5a","#5aa87a"); dome(-9,-8,4,"#c94a3a","#e46a4a"); dome(9,-8,4,"#3a5aa8","#5a7ac8");
   dome(-5,-15,3,"#d0a030","#f0c050"); dome(5,-15,3,"#8a4aa8","#aa6ac8"); }
-function drawBuild(t,x,y){ ({ger:sprGer,wall:sprWall,pagoda:sprPagoda,dome:sprDome,cube:sprCube,shikhara:sprShikhara,crystal:sprCrystal,station:sprStation,palace:sprPalace,skyscraper:sprSkyscraper,ruin:sprRuin,petra:sprPetra,port:sprPort,basil:sprBasil}[t]||sprPagoda)(x,y); }
+function sprPalm(x,y){ px(x-6,y+6,12,3,C.shadow); px(x-1,y-14,3,20,"#5a3a22"); px(x-1,y-14,1,20,"#6a4a2c");
+  g.strokeStyle="#3a6a34"; g.lineWidth=2; for(let i=0;i<7;i++){ const a=-2.2+i*0.55; g.beginPath(); g.moveTo(x,y-13); g.lineTo(x+Math.cos(a)*13,y-13+Math.sin(a)*9-1); g.stroke(); }
+  g.strokeStyle="#4a8a44"; for(let i=0;i<7;i++){ const a=-2.2+i*0.55; g.beginPath(); g.moveTo(x,y-14); g.lineTo(x+Math.cos(a)*9,y-14+Math.sin(a)*6-1); g.stroke(); }
+  px(x-2,y-15,2,2,"#8a6a2a"); px(x+1,y-14,2,2,"#8a6a2a"); }
+function sprPeak(x,y){ px(x-20,y+8,40,4,C.shadow);
+  g.fillStyle="#39404e"; g.beginPath(); g.moveTo(x-22,y+8); g.lineTo(x,y-34); g.lineTo(x+22,y+8); g.closePath(); g.fill();
+  g.fillStyle="#525f74"; g.beginPath(); g.moveTo(x-9,y-6); g.lineTo(x,y-34); g.lineTo(x+7,y-9); g.closePath(); g.fill();
+  g.fillStyle=C.snow; g.beginPath(); g.moveTo(x-7,y-16); g.lineTo(x,y-34); g.lineTo(x+6,y-17); g.lineTo(x+2,y-13); g.lineTo(x-1,y-18); g.lineTo(x-4,y-12); g.closePath(); g.fill(); }
+function drawBuild(t,x,y){ ({ger:sprGer,wall:sprWall,pagoda:sprPagoda,dome:sprDome,cube:sprCube,shikhara:sprShikhara,crystal:sprCrystal,station:sprStation,palace:sprPalace,skyscraper:sprSkyscraper,ruin:sprRuin,petra:sprPetra,port:sprPort,basil:sprBasil,palm:sprPalm,peak:sprPeak}[t]||sprPagoda)(x,y); }
 function sprHouse(x,y,theme){ px(x-15,y+8,30,4,C.shadow);
   const wall=theme==="mud"?"#8a6a44":theme==="rock"?"#7a4a38":C.concreteD, wallH=theme==="mud"?"#a5814f":theme==="rock"?"#9a6a52":C.concrete;
   px(x-14,y-16,28,24,wall); px(x-14,y-16,28,3,wallH);
@@ -842,12 +889,12 @@ function drawBeacons(){ const rm=R[ri],by=Math.sin(T*4)*2; const spark=(x,y)=>{ 
   if(ex.n!=null)opening(W/2,47,windNorth); if(ex.s!=null)opening(W/2,H-7,false);
   if(ex.w!=null)opening(6,H/2,false); if(ex.e!=null)opening(W-6,H/2, ri===0&&!inv.map); }
 // geographic pixel positions of each room on the Record (Asia laid out N→S, W→E)
-const MAPXY=[[150,74],[150,58],[186,66],[126,80],[96,66],[170,82],[198,92],[100,86],[128,100],[150,44],[150,28],[150,114],[180,122],[212,116],[240,122],[118,130],[120,148],[242,140],[106,172],[104,186],[172,168],[210,110],[224,124],[76,168],[66,156],[54,150],[86,150],[100,158],[136,88],[104,96]];
+const MAPXY=[[150,74],[150,58],[186,66],[126,80],[96,66],[170,82],[198,92],[100,86],[128,100],[150,44],[150,28],[150,114],[180,122],[212,116],[240,122],[118,130],[120,148],[242,140],[106,172],[104,186],[172,168],[210,110],[224,124],[76,168],[66,156],[54,150],[86,150],[100,158],[136,88],[104,96],[86,72],[80,54],[92,38],[110,34],[132,178],[158,186],[128,162]];
 // blobs that together make the drowned continent (cx,cy,r)
-const LAND=[[150,58,52],[126,92,52],[150,120,50],[196,112,46],[236,128,36],[112,150,42],[74,156,30],[168,156,40],[152,178,28],[210,118,34],[100,176,26],[112,84,34]];
-const MAPLBL=[["SIBERIA",156,48],["MOSCOW",120,84],["MONGOLIA",152,110],["CHINA",228,108],["SILK ROAD",112,136],["INDIA",174,160],["PERSIA",96,150],["ARABIA",104,168],["LEVANT",52,140]];
+const LAND=[[150,58,52],[126,92,52],[150,120,50],[196,112,46],[236,128,36],[112,150,42],[74,156,30],[168,156,40],[152,178,28],[210,118,34],[100,176,26],[112,84,34],[92,50,36],[144,182,26],[128,164,20]];
+const MAPLBL=[["SIBERIA",162,48],["MOSCOW",120,84],["THE HIGH PASSES",84,44],["MONGOLIA",152,110],["CHINA",228,108],["SILK ROAD",112,136],["INDIA",174,160],["PERSIA",96,150],["ARABIA",108,168],["LEVANT",52,140]];
 // lakes & oases on the chart (cx,cy,r)
-const LAKES=[[96,72,7],[118,128,6],[150,98,5],[128,150,4],[236,150,5]];
+const LAKES=[[86,72,8],[118,128,6],[150,98,5],[128,150,4],[236,150,5],[110,34,6],[132,178,5]];
 function drawMap(){ // THE RECORD — a drawn chart of drowned Asia
   px(0,0,W,H,"#081320");                                            // the risen sea
   let s=7; const rn=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff;};
