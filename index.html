@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v26 · lakes, oases, mountainways";
+const W=320,H=200, BUILD="v27 · Knowledge in the Carpathians";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -333,13 +333,13 @@ const R=[
   enter:"The forest gives out. Grass to forever, wind that never stops. Wild horses run from you. Eagles read the sky.",
   trees:seededTrees(3,88,BIOME.steppe,clearEdges), fires:[],
   bush:[{x:60,y:150,ber:1},{x:250,y:90,ber:1,k:"mush"}], dweller:{x:150,y:70}, way:{x:150,y:150}, chest:{x:70,y:80,loot:["arrows","food"]}, wild:[{t:"horse",x:120,y:110},{t:"horse",x:170,y:130},{t:"raven",x:220,y:60}], enemies:[{t:"wolf",x:230,y:150}] },
- {b:"mtn",name:"ASIA · THE APPROACH", exits:{s:1,w:8,n:10}, scent:1, guard:1,
-  enter:"The land climbs and whitens. Something antlered with light stands in the pass north — and it will not suffer a fool to pass.",
-  trees:seededTrees(5,99,BIOME.mtn,clearEdges), fires:[{x:250,y:150,lit:0}],
-  wild:[], enemies:[{t:"ranger",x:120,y:90}] },
- {b:"mtn",name:"ASIA · SAINT PETERSBURG", exits:{s:9}, scent:2, shrine:{x:60,y:104},
-  enter:"The drowned magnificent city. Ice on every window, water in every hall. And a stone that remembers, warm the way a memory is warm.",
-  trees:seededTrees(3,111,BIOME.mtn,(x,y)=>x<80||clearEdges(x,y)), build:[{t:"palace",x:150,y:100},{t:"palace",x:240,y:120}], fires:[],
+ {b:"mtn",name:"ASIA · THE APPROACH", exits:{s:1,w:8,n:10},
+  enter:"The land climbs and whitens toward the drowned northern capital. The cold up here has opinions, and teeth. Something grey watches you from the rocks.",
+  trees:seededTrees(5,99,BIOME.mtn,clearEdges), fires:[{x:250,y:150,lit:0}], way:{x:150,y:150},
+  wild:[], enemies:[{t:"wolf",x:120,y:90}] },
+ {b:"mtn",name:"RUSSIA · DROWNED SAINT PETERSBURG", exits:{s:9,w:37}, seal:{dir:"w"},
+  enter:"The drowned magnificent city — ice on every window, water in every hall, the palaces of a vanished empire sinking with terrible grace. West of here the land climbs to the Urals, the last wall of Asia. But the way west will not open until the wind is with you.",
+  trees:seededTrees(3,111,BIOME.mtn,(x,y)=>x<80||clearEdges(x,y)), build:[{t:"palace",x:150,y:100},{t:"palace",x:240,y:120}], fires:[{x:60,y:150,lit:0}],
   wild:[], enemies:[] },
  {b:"steppe",name:"MONGOLIA · THE GREAT STEPPE", exits:{e:8,s:12},
   enter:"Grass to the curve of the world, and the wind that once raised empires. Wild horses scatter from you. A people out-rode the sun here, and then the sun went out.",
@@ -457,10 +457,29 @@ const R=[
  {b:"desert",name:"PERSIA · THE GREAT GORGE", exits:{e:27}, hot:1, river:1, fall:1,
   enter:"The road drops into a red gorge a river cut over a million years. A ribbon of white water still falls from the rim to feed a green thread along the canyon floor. Cliffs lean close overhead. Cool here, and wet, and watched.",
   trees:seededTrees(3,430,BIOME.desert,(x,y)=>y<96||clearEdges(x,y)), build:[{t:"ruin",x:58,y:132}], water:[{x:150,y:120}], way:{x:242,y:150}, bush:[{x:92,y:150,ber:1}],
-  wild:[{t:"raven",x:204,y:58},{t:"deer",x:120,y:132}], enemies:[{t:"wolf",x:212,y:110}] }
+  wild:[{t:"raven",x:204,y:58},{t:"deer",x:120,y:132}], enemies:[{t:"wolf",x:212,y:110}] },
+ {b:"mtn",name:"THE URAL MOUNTAINS · THE LAST WALL", exits:{e:10,w:38},
+  enter:"The stone spine that divides Asia from all that lies west. Beyond it, the world you were born knowing simply ends. Snow, iron in the rock, and a wind that has travelled a very long way to meet you. This is the edge of everything you have walked.",
+  trees:[], build:[{t:"peak",x:66,y:118},{t:"peak",x:238,y:120}], fires:[{x:150,y:150,lit:0}], way:{x:150,y:152},
+  slab:{x:150,y:70,say:"'Here the thinkers were marched east in their millions — in chains, in winter, for the crime of a wrong idea. The mountains counted them, and told no one, and are counting still.'"},
+  wild:[{t:"raven",x:200,y:58}], enemies:[{t:"wolf",x:190,y:120}] },
+ {b:"steppe",name:"UKRAINE · THE BLACK EARTH", exits:{e:37,w:39},
+  enter:"Down out of the mountains into soil so black and rich it should feed the whole world — and once it did. Wheat to the horizon, gone to seed and ghost. They starved a nation to death on this earth, on purpose, one winter, with the granaries full and guarded. The ground has not forgotten.",
+  trees:seededTrees(3,440,BIOME.steppe,clearEdges), build:[{t:"ger",x:80,y:120}], water:[{x:70,y:150}], way:{x:150,y:152}, house:{x:58,y:150,theme:"mud"},
+  slab:{x:240,y:80,say:"'The Holodomor, it would be named — the killing by hunger. Grain under guard in the silos, and children eating the thatch off their own roofs. The wheat still grew all around them. That was the cruelty of it.'"},
+  bush:[{x:220,y:90,ber:1,k:"apple"}], wild:[{t:"raven",x:200,y:58},{t:"horse",x:120,y:110}], enemies:[{t:"human",x:212,y:120}] },
+ {b:"frost",name:"THE DEAD ZONE · PRIPYAT", exits:{e:38,w:40}, rad:1,
+  enter:"A city built for fifty thousand souls, emptied in a single afternoon and never refilled. A funfair whose wheel never turned. And over it all the sarcophagus — the tomb they poured over the reactor that caught fire and salted the wind with an invisible death. Do not linger. Cross, and get out.",
+  trees:seededTrees(5,441,BIOME.frost,clearEdges), build:[{t:"station",x:150,y:98},{t:"skyscraper",x:68,y:122},{t:"skyscraper",x:238,y:126}], tower:{x:150,y:140}, cars:[{x:110,y:150}],
+  slab:{x:60,y:78,say:"'The first men sent in wrote their names on the reactor wall, so that someone, someday, would know they had gone inside. Most of the names have faded now. The reactor has not.'"},
+  wild:[{t:"raven",x:206,y:58}], enemies:[{t:"wolf",x:150,y:128}] },
+ {b:"mtn",name:"UKRAINE · THE CARPATHIANS, MOUNT HOVERLA", exits:{e:39}, scent:2, shrine:{x:60,y:104},
+  enter:"West and up once more, into green mountains gentler than the Urals but older in spirit — the Carpathians, the roof of Ukraine. Mist in the spruce, and wolves that remember men. And there, on the high meadow of Hoverla, a stone that is warm the way a memory is warm — and before it, a shape of antlered light that will not suffer a fool to pass.",
+  trees:seededTrees(4,442,BIOME.mtn,(x,y)=>x<80||clearEdges(x,y)), build:[{t:"peak",x:206,y:110},{t:"peak",x:262,y:122}], fires:[{x:250,y:152,lit:0}],
+  wild:[], enemies:[{t:"ranger",x:150,y:100}] }
 ];
 const EXPLORABLE=[0,1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,19,20,23,24,25];
-const MP=[[2,3],[2,2],[3,3],[2,4],[1,3],[4,3],[4,2],[1,4],[0,3],[2,1],[2,0],[0,4],[0,5],[1,5],[1,6],[2,5],[0,6],[2,6],[1,7],[1,8],[2,8],[5,2],[5,3],[3,7],[3,8],[4,8],[5,8],[0,7],[1,1],[0,1],[1,0],[0,0],[2,0],[3,0],[3,8],[4,9],[3,9]]; // rough map coords per room
+const MP=[[2,3],[2,2],[3,3],[2,4],[1,3],[4,3],[4,2],[1,4],[0,3],[2,1],[2,0],[0,4],[0,5],[1,5],[1,6],[2,5],[0,6],[2,6],[1,7],[1,8],[2,8],[5,2],[5,3],[3,7],[3,8],[4,8],[5,8],[0,7],[1,1],[0,1],[1,0],[0,0],[2,0],[3,0],[3,8],[4,9],[3,9],[4,0],[5,0],[6,0],[7,0]]; // rough map coords per room
 let ri=0;
 
 // ---------- input ----------
@@ -513,7 +532,7 @@ function click(x,y){
 }
 function travel(dir){
   const rm=R[ri];
-  if(rm.guard && dir==="n" && !gateOpen){ const left=FRAG_TOTAL-frags.size; caption("The guardian throws you back like a leaf. 'Not yet,' the wind seems to say. 'You have gathered "+frags.size+" of "+FRAG_TOTAL+". "+left+" fragment"+(left===1?"":"s")+" of knowledge still sleep in the world. Find them, then pass.'"); player.x=W/2;player.y=H/2;player.tx=W/2;player.ty=H/2;player.entryGrace=0.7; sfxHurt(); return; }
+  if(rm.seal && rm.seal.dir===dir && !gateOpen){ const left=FRAG_TOTAL-frags.size; const dn={n:"north",s:"south",e:"east",w:"west"}[dir]; caption("An unseen force turns you back at the threshold. The way "+dn+" will not open until all seven fragments are gathered ("+frags.size+"/"+FRAG_TOTAL+" — "+left+" still sleep in the world). The winds are not yet with you."); player.x=W/2;player.y=H/2;player.tx=W/2;player.ty=H/2;player.entryGrace=0.7; sfxHurt(); return; }
   gotoRoom(rm.exits[dir], dir);
 }
 function attack(){
@@ -531,7 +550,7 @@ function killEnemy(en){
   if(en.t==="ranger" && !gateOpen){ en.hp=6; en.hurt=0.3; en.x+=(en.x<player.x?-10:10); caption("You strike it down — but it reforms from the light. It cannot fall until all seven fragments are yours ("+frags.size+"/"+FRAG_TOTAL+")."); return; }
   en.dead=1; xp+=en.t==="ranger"?5:en.t==="bear"?3:1;
   const drop={wolf:1,bear:4,deer:2,human:0,ranger:0}[en.t]||0; if(drop>0){ inv.food+=drop; }
-  if(en.t==="ranger") caption("The guardian steps aside. The wind is with you now. Go north.");
+  if(en.t==="ranger") caption("The guardian of light comes apart like mist, and does not reform. It has judged you ready. The warm stone is yours to touch now — take what it holds.",{voice:true});
   else if(en.t==="bear") caption("The great bear falls — a feast of meat. The river is yours to cross.");
   else if(drop>0) caption("You take the meat. Food for the cold road."); setInv(); }
 function lightFire(f){ if(!inv.candleLit){caption("Nothing to light it with.");return;} f.lit=1; sfxLight(); caption("The fire catches. Warmth. Stand close and thaw."); }
@@ -566,10 +585,10 @@ function gotoRoom(i,from){ ri=i; const rm=R[i]; scene={mode:"play"}; placeEl.tex
 }
 function checkGate(){ if(gateOpen) return; if(frags.size>=FRAG_TOTAL){ openGate(); } }
 function openGate(){ gateOpen=true; windNorth=true; gateStage=1; setWind(0.2);
-  caption("The wind turns. It stirs, then rises, and begins to blow north — you feel it pull. It blows for you now. Follow it, to the drowned city.",{voice:true}); }
+  caption("The seven stir in you — and the WIND answers. It rises, and rises, and begins to pull: westward, past the last mountains of Asia, down into the poisoned green heart of Ukraine, up to the peaks where Knowledge waits. The way west is open now. Go.",{voice:true}); }
 function nudgeNorth(){ if(!gateOpen) return; gateStage++;
-  if(gateStage===2) caption("The elk turn north. The ravens go north. Even the lost drift north, faces to the wind. Everything leans one way. You are the only thing standing still.",{voice:true});
-  else caption("…look. everything is going north, bitch. the elk. the birds. the dead. everything but you. so GO. 🡱",{snark:true}); }
+  if(gateStage===2) caption("The elk turn west. The ravens go west. Even the lost drift toward the mountains, faces to the wind. Everything leans one way. You are the only thing standing still.",{voice:true});
+  else caption("…look. the whole world is leaning west now, bitch. the elk. the birds. the dead. everything but you. so GO — the mountains of Ukraine are waiting. 🡰",{snark:true}); }
 
 function mkEnemy(e){ const base={x:e.x,y:e.y,t:e.t,dir:"left",phase:Math.random()*6,hurt:0,cd:0,dead:false,aggroOn:false};
   if(e.t==="wolf")   Object.assign(base,{hp:2,spd:38,aggro:70,atk:16});
@@ -578,8 +597,11 @@ function mkEnemy(e){ const base={x:e.x,y:e.y,t:e.t,dir:"left",phase:Math.random(
   if(e.t==="ranger") Object.assign(base,{hp:6,spd:26,aggro:130,atk:18});
   return base; }
 
-function takeKnowledge(){ if(knowledge)return; knowledge=true; sfxChime(); flashT=0.9; player.maxHp=4; player.hp=4; xp=0;
-  caption("You take KNOWLEDGE. The world resolves — numbers, names, the shape of what you are, and what you carry.",{cb:()=>{
+function takeKnowledge(){ if(knowledge)return;
+  if(!gateOpen){ const left=FRAG_TOTAL-frags.size; caption("You reach for the warm stone — but the guardian's light throws you back. Not yet. Gather all seven fragments first ("+frags.size+"/"+FRAG_TOTAL+", "+left+" to go)."); return; }
+  if(enemies.some(e=>e.t==="ranger"&&!e.dead)){ caption("The guardian of light stands between you and the stone. Strike it down first — now, at last, it can fall."); return; }
+  knowledge=true; sfxChime(); flashT=0.9; player.maxHp=4; player.hp=4; xp=0;
+  caption("You take KNOWLEDGE, here on the roof of Ukraine. The world resolves — numbers, names, the shape of what you are, and what you carry.",{cb:()=>{
     setTimeout(()=>caption("the wind speaks: you were made to carry us home. this was only the first. and when the seven are yours, so must you be given.",{voice:true,cb:()=>{
       setTimeout(()=>{ scene={mode:"end"}; placeEl.textContent="CH. I — KNOWLEDGE TAKEN"; hintEl.textContent="to be continued — EUROPE, and the LIGHT"; },1500); }}),1100); }}); }
 
@@ -684,6 +706,7 @@ function update(dt){
   // gate nudge: after gate, if you wander a non-northern room, the terminal gets impatient
   if(gateOpen && ri!==9 && ri!==10){ gateHint+=dt; if(gateHint>14){ gateHint=0; if(capDone()) nudgeNorth(); } } else gateHint=0;
   if(rm.evil){ evilT+=dt; if(evilT>8){ evilT=0; if(capDone()){ caption(EVILWIND[Math.floor(Math.random()*EVILWIND.length)]); if(!muted)sfxEvil(); } } }
+  if(rm.rad){ player.hp-=dt*0.05; if(Math.random()<dt*0.28 && capDone()) caption("A taste of hot metal, a ticking behind your teeth. The air itself is poisoned here. Keep moving — get out of the Dead Zone."); if(player.hp<=0) die("The invisible fire of the old reactor unmakes you, quietly, cell by cell. You should not have lingered in Pripyat."); }
 
   // enemies
   if(roomCalm>0)roomCalm-=dt;
@@ -842,6 +865,7 @@ function drawPack(){ g.fillStyle="rgba(8,10,20,.96)"; g.fillRect(0,0,W,H);
     for(let i=0;i<acts.length;i++){ g.fillStyle=acts[i][1]==="close"?"#7d8ec9":C.phos; g.fillText("› "+acts[i][0],G.mx+8,G.my+3+i*G.rh+10); } }
   else { g.textAlign="center"; g.fillStyle="#7d8ec9"; g.font="7px 'Courier New',monospace"; g.fillText("tap an item for choices  ·  B to close",W/2,H-9); }
   g.textAlign="center"; g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("✶ knowledge:  "+frags.size+" / "+FRAG_TOTAL,W/2,H-20); g.textAlign="left"; }
+function drawRad(){ g.save(); const a=0.1+Math.sin(T*3)*0.05; const gr=g.createRadialGradient(W/2,H/2,34,W/2,H/2,180); gr.addColorStop(0,"rgba(30,50,10,0)"); gr.addColorStop(1,"rgba(96,150,40,"+(0.34+a)+")"); g.fillStyle=gr; g.fillRect(0,0,W,H); g.restore(); }
 function drawEvil(){ g.save(); const a=0.22+Math.sin(T*1.7)*0.08; const gr=g.createRadialGradient(W/2,H/2,26,W/2,H/2,190); gr.addColorStop(0,"rgba(50,0,10,0)"); gr.addColorStop(1,"rgba(95,0,22,"+(0.5+a)+")"); g.fillStyle=gr; g.fillRect(0,0,W,H); g.strokeStyle="rgba(160,30,40,0.4)"; g.lineWidth=1; for(let i=0;i<16;i++){ const yy=((i*13)+ (T*45))%H, xx=((i*31)+ T*70)%W; g.beginPath(); g.moveTo(xx,yy); g.lineTo(xx-11,yy-3); g.stroke(); } g.restore(); }
 function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   if(rm.cars) for(const c of rm.cars) sprCar(c.x,c.y);
@@ -886,13 +910,13 @@ function drawBeacons(){ const rm=R[ri],by=Math.sin(T*4)*2; const spark=(x,y)=>{ 
   const ex=rm.exits, pulse=0.35+Math.sin(T*3)*0.22;
   const opening=(mx,my,gold)=>{ g.save(); g.globalCompositeOperation="lighter"; g.globalAlpha=pulse;
     const c=gold?"rgba(255,207,92,":"rgba(127,240,176,"; const gr=g.createRadialGradient(mx,my,0,mx,my,17); gr.addColorStop(0,c+"0.75)"); gr.addColorStop(1,c+"0)"); g.fillStyle=gr; g.fillRect(mx-17,my-17,34,34); g.restore(); };
-  if(ex.n!=null)opening(W/2,47,windNorth); if(ex.s!=null)opening(W/2,H-7,false);
-  if(ex.w!=null)opening(6,H/2,false); if(ex.e!=null)opening(W-6,H/2, ri===0&&!inv.map); }
+  if(ex.n!=null)opening(W/2,47,false); if(ex.s!=null)opening(W/2,H-7,false);
+  if(ex.w!=null)opening(6,H/2,windNorth); if(ex.e!=null)opening(W-6,H/2, ri===0&&!inv.map); }
 // geographic pixel positions of each room on the Record (Asia laid out N→S, W→E)
-const MAPXY=[[150,74],[150,58],[186,66],[126,80],[96,66],[170,82],[198,92],[100,86],[128,100],[150,44],[150,28],[150,114],[180,122],[212,116],[240,122],[118,130],[120,148],[242,140],[106,172],[104,186],[172,168],[210,110],[224,124],[76,168],[66,156],[54,150],[86,150],[100,158],[136,88],[104,96],[86,72],[80,54],[92,38],[110,34],[132,178],[158,186],[128,162]];
+const MAPXY=[[150,74],[150,58],[186,66],[126,80],[96,66],[170,82],[198,92],[100,86],[128,100],[150,44],[150,28],[150,114],[180,122],[212,116],[240,122],[118,130],[120,148],[242,140],[106,172],[104,186],[172,168],[210,110],[224,124],[76,168],[66,156],[54,150],[86,150],[100,158],[136,88],[104,96],[86,72],[80,54],[92,38],[110,34],[132,178],[158,186],[128,162],[122,26],[98,24],[76,26],[52,30]];
 // blobs that together make the drowned continent (cx,cy,r)
-const LAND=[[150,58,52],[126,92,52],[150,120,50],[196,112,46],[236,128,36],[112,150,42],[74,156,30],[168,156,40],[152,178,28],[210,118,34],[100,176,26],[112,84,34],[92,50,36],[144,182,26],[128,164,20]];
-const MAPLBL=[["SIBERIA",162,48],["MOSCOW",120,84],["THE HIGH PASSES",84,44],["MONGOLIA",152,110],["CHINA",228,108],["SILK ROAD",112,136],["INDIA",174,160],["PERSIA",96,150],["ARABIA",108,168],["LEVANT",52,140]];
+const LAND=[[150,58,52],[126,92,52],[150,120,50],[196,112,46],[236,128,36],[112,150,42],[74,156,30],[168,156,40],[152,178,28],[210,118,34],[100,176,26],[112,84,34],[92,50,36],[144,182,26],[128,164,20],[92,26,40],[58,30,22]];
+const MAPLBL=[["SIBERIA",164,50],["MOSCOW",120,84],["THE HIGH PASSES",84,46],["UKRAINE",96,36],["CARPATHIANS",52,40],["MONGOLIA",152,110],["CHINA",228,108],["SILK ROAD",112,136],["INDIA",174,160],["PERSIA",96,150],["ARABIA",108,168],["LEVANT",52,140]];
 // lakes & oases on the chart (cx,cy,r)
 const LAKES=[[86,72,8],[118,128,6],[150,98,5],[128,150,4],[236,150,5],[110,34,6],[132,178,5]];
 function drawMap(){ // THE RECORD — a drawn chart of drowned Asia
@@ -1008,7 +1032,7 @@ function render(){
     if(scene.step===3){ const dx=40,dy=100,by=Math.sin(T*4)*3; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(dx,dy,0,dx,dy,24); gr.addColorStop(0,"rgba(255,207,92,.6)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(dx-24,dy-24,48,48); g.fillStyle=C.gold; px(dx+16+by,dy-1,7,2,C.gold); px(dx+16+by,dy-4,2,3,C.gold); px(dx+16+by,dy+1,2,3,C.gold); px(dx+14+by,dy-2,2,4,C.gold); g.restore(); } }
   else if(scene.mode==="play"){ drawScene(); const B2=BIOME[R[ri].b]; const s=sunNow(); const dk=R[ri].b==="cave"?B2.dark:Math.max(0.06,B2.dark*(1-s*0.92)); applyDark(dk);
     if(R[ri].b!=="cave"&&s>0.45){ g.save(); g.globalCompositeOperation="lighter"; g.globalAlpha=(s-0.45)*0.5; g.fillStyle=R[ri].hot?"#ffcf8a":"#9fc0e0"; g.fillRect(0,0,W,H); g.restore(); } // daylight wash
-    drawFrost(); drawBeacons(); drawAlerts(); if(R[ri].evil) drawEvil(); drawHUD(); }
+    drawFrost(); drawBeacons(); drawAlerts(); if(R[ri].evil) drawEvil(); if(R[ri].rad) drawRad(); drawHUD(); }
   else if(scene.mode==="house"){ drawHouse(); drawHUD(); }
   else if(scene.mode==="end"){ drawScene(); applyDark(0.5); drawHUD(); g.fillStyle="rgba(5,10,7,.5)"; g.fillRect(0,0,W,H); g.textAlign="center"; g.fillStyle=C.gold; g.font="10px 'Courier New',monospace"; g.fillText("KNOWLEDGE",W/2,84); g.fillStyle=C.spirit; g.font="7px 'Courier New',monospace"; g.fillText("the world boots up",W/2,98); g.textAlign="left"; }
   if(inv.mapOpen && scene.mode==="play") drawMap();
