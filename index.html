@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v27 · Knowledge in the Carpathians";
+const W=320,H=200, BUILD="v28 · keys, run, hop & loot";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -137,6 +137,7 @@ function sfxStep(){ noise(0.08,0,380,0.15,"lowpass"); tone(110,60,0.09,0,"sine",
 function sfxLight(){ noise(0.35,0,900,0.16,"bandpass"); tone(300,700,0.3,0.02,"sine",0.08); }
 function sfxSwing(){ noise(0.09,0,2200,0.18,"highpass"); }
 function sfxBow(){ noise(0.06,0,3000,0.14,"highpass"); tone(900,300,0.08,0,"triangle",0.08); }
+function sfxJump(){ tone(320,620,0.12,0,"sine",0.09); noise(0.05,0,700,0.08,"lowpass"); }
 function sfxHitEnemy(){ noise(0.08,0,500,0.2,"lowpass"); tone(220,120,0.08,0,"square",0.1); }
 function sfxHurt(){ tone(200,70,0.35,0,"sawtooth",0.2); }
 function sfxWolf(){ tone(300,160,0.4,0,"sawtooth",0.12); tone(240,120,0.5,0.1,"sawtooth",0.1); }
@@ -269,13 +270,19 @@ const DWELL=[
   "'They cured every sickness and ended every war — and then a stranger admired their moon.'",
   "'Banana,' it says, with great seriousness. You do not know this word.",
   "'Beware the summer east,' it whispers. It is not summer. It is never summer now.'"];
+const FORAGE={ apple:"Frozen apples, hard as stone but sweet.", mush:"Pale mushrooms. Probably fine.",
+  fig:"Wild figs, split and honey-dark. A small mercy.", grain:"A fistful of wild wheat, threshed in your palm.",
+  root:"Pale roots, earthy and bitter — but they fill the belly.", olive:"Bitter olives off an ancient tree. Cured by the sun, and time.",
+  date:"Sticky dates from a palm — sugar and salt, the desert's own bread.", pine:"Pine nuts, prised cold from the cones. Rich, and slow to gather.",
+  _:"Bitter berries. Saved for a hungrier hour." };
 const EVILWIND=[
   "The wind here is wrong. It moves against itself, and it is warm where it should be cold.",
   "Something in the wind knows the shape of you. It has waited a long time to.",
   "You hear it before you understand it — a voice with no mouth, saying a name you almost know.",
   "The air tastes of iron and old grief. Something evil first learned patience in this place.",
   "Do not listen to the wind. (You are already listening.)"];
-const player={x:270,y:120,tx:270,ty:120,dir:"left",moving:false,phase:0,stepT:0,warmth:100,hunger:100,thirst:100,water:100,stamina:100,hp:3,maxHp:3,inv:0,atkCd:0,attackT:0,entryGrace:0};
+const player={x:270,y:120,tx:270,ty:120,dir:"left",moving:false,phase:0,stepT:0,warmth:100,hunger:100,thirst:100,water:100,stamina:100,hp:3,maxHp:3,inv:0,atkCd:0,attackT:0,entryGrace:0,jumpT:0};
+const held={};
 const inv={candle:false,candleLit:false,coat:false,shoes:false,wraps:false,medicine:false,pack:false,map:false,mapOpen:false,food:1,bow:false,arrows:0};
 const belt={knife:null,axe:null,blade:null}; let eqKey="knife";
 let weapon=null, candleR=0, flick=1, fade=0, fadeDir=0, fadeCb=null, knowledge=false, canRead=false, packOpen=false, houseTheme="ruin", worn=null, packSel=-1, xp=0, flashT=0;
@@ -300,7 +307,7 @@ const R=[
   dweller:{x:56,y:120}, wild:[{t:"deer",x:180,y:120},{t:"raven",x:90,y:60}], enemies:[] },
  {b:"frost",name:"ASIA · THE BIRCH ROAD", exits:{s:0,e:5,n:9},
   enter:"Birches like white bones. The road bends north — and the cold begins to have opinions.",
-  trees:seededTrees(11,22,BIOME.frost,clearEdges), bush:[{x:150,y:150,ber:1},{x:90,y:90,ber:1,k:"apple"}], fires:[{x:70,y:130,lit:0}],
+  trees:seededTrees(11,22,BIOME.frost,clearEdges), bush:[{x:150,y:150,ber:1},{x:90,y:90,ber:1,k:"apple"},{x:250,y:150,ber:1,k:"pine"}], fires:[{x:70,y:130,lit:0}], chest:{x:120,y:70,loot:["arrows","knife"]},
   wild:[{t:"raven",x:200,y:70}], enemies:[{t:"wolf",x:230,y:90}] },
  {b:"frost",name:"ASIA · THE EAST CAMP", exits:{w:0,e:6,n:5},
   enter:"A dead traveller's camp, half-buried in frost. They did not make it — but they packed well: a coat, boots, a spare axe, and a map they drew of these lands. Take it all.",
@@ -341,12 +348,12 @@ const R=[
   enter:"The drowned magnificent city — ice on every window, water in every hall, the palaces of a vanished empire sinking with terrible grace. West of here the land climbs to the Urals, the last wall of Asia. But the way west will not open until the wind is with you.",
   trees:seededTrees(3,111,BIOME.mtn,(x,y)=>x<80||clearEdges(x,y)), build:[{t:"palace",x:150,y:100},{t:"palace",x:240,y:120}], fires:[{x:60,y:150,lit:0}],
   wild:[], enemies:[] },
- {b:"steppe",name:"MONGOLIA · THE GREAT STEPPE", exits:{e:8,s:12},
+ {b:"steppe",name:"MONGOLIA · THE GREAT STEPPE", exits:{e:8,s:12}, chest:{x:250,y:150,loot:["axe","arrows"]},
   enter:"Grass to the curve of the world, and the wind that once raised empires. Wild horses scatter from you. A people out-rode the sun here, and then the sun went out.",
   trees:seededTrees(2,201,BIOME.steppe,clearEdges), build:[{t:"ger",x:90,y:120},{t:"ger",x:140,y:142}], bush:[{x:220,y:90,ber:1}],
   fragment:{x:150,y:80,id:"voice",name:"THE FIRST VOICE — the sung memory, older than any letter"}, house:{x:96,y:118,theme:"mud"},
   wild:[{t:"horse",x:120,y:100},{t:"horse",x:180,y:130},{t:"raven",x:60,y:70}], dweller:{x:210,y:110}, fires:[{x:250,y:150,lit:0}], enemies:[{t:"wolf",x:236,y:80}] },
- {b:"steppe",name:"MONGOLIA · KARAKORUM RUINS", exits:{n:11,e:13,s:14},
+ {b:"steppe",name:"MONGOLIA · KARAKORUM RUINS", exits:{n:11,e:13,s:14}, chest:{x:250,y:80,loot:["knife","food"]}, bush:[{x:70,y:80,ber:1,k:"grain"}],
   enter:"The capital of the Great Khan — or what the grass left of it. A throne-hall's bones. They ruled from here to the edge of the known world.",
   trees:seededTrees(2,202,BIOME.steppe,clearEdges), build:[{t:"palace",x:150,y:108},{t:"ger",x:66,y:142}], slab:{x:236,y:90,say:"'Here sat one who owned the horizon. His name is a sound the wind forgot.'"},
   way:{x:100,y:150}, house:{x:66,y:140,theme:"mud"},
@@ -361,7 +368,7 @@ const R=[
   trees:seededTrees(2,204,BIOME.winter,clearEdges), build:[{t:"pagoda",x:88,y:112},{t:"pagoda",x:150,y:88},{t:"palace",x:224,y:132}], cars:[{x:120,y:152}], slab:{x:58,y:80,say:"'They pressed slabs of light to their faces here — ten million at once, and each of them alone.'"},
   fragment:{x:150,y:120,id:"page",name:"THE FIRST PAGE — the oracle bone, the printed word, paper that carried whole minds"},
   wild:[], enemies:[{t:"human",x:180,y:100},{t:"wolf",x:120,y:70}] },
- {b:"steppe",name:"CENTRAL ASIA · SAMARKAND", exits:{w:13,s:16},
+ {b:"steppe",name:"CENTRAL ASIA · SAMARKAND", exits:{w:13,s:16}, chest:{x:250,y:120,loot:["arrows","knife"]},
   enter:"Blue domes half-swallowed by dune. The Silk Road ran through here — silk, spice, plague, and prayer, all travelling the same road, all ending the same way.",
   trees:seededTrees(1,205,BIOME.steppe,clearEdges), build:[{t:"dome",x:110,y:110},{t:"dome",x:206,y:120}], water:[{x:150,y:152}], bush:[{x:70,y:80,ber:1,k:"apple"}],
   fragment:{x:150,y:78,id:"alphabet",name:"THE ALPHABET"}, house:{x:240,y:130,theme:"mud"}, way:{x:70,y:150},
@@ -370,7 +377,7 @@ const R=[
   enter:"Sand to the horizon, under a sun that never forgot how to burn. Water is life out here, and there is almost none. A dead caravanner lies half-drifted over — and the desert keeps clothes better than it keeps people.",
   trees:[], build:[], water:[{x:70,y:120}], dune:1, chest:{x:210,y:100,loot:["wraps","food"]}, corpse:{x:150,y:150},
   wild:[{t:"raven",x:200,y:70}], fires:[], enemies:[{t:"wolf",x:180,y:120}] },
- {b:"winter",name:"CHINA · THE TEMPLE OF HEAVEN", exits:{n:14},
+ {b:"winter",name:"CHINA · THE TEMPLE OF HEAVEN", exits:{n:14}, chest:{x:250,y:80,loot:["arrows","axe"]}, bush:[{x:70,y:150,ber:1,k:"mush"}],
   enter:"A round temple where emperors once begged the sky for good harvests. The sky stopped listening long ago — it had gone to the moon. But old weapons endured here, and quiet.",
   trees:seededTrees(2,207,BIOME.winter,clearEdges), build:[{t:"pagoda",x:150,y:100}], blade:{x:108,y:132}, fires:[{x:224,y:140,lit:0}], slab:{x:58,y:80,say:"'They asked heaven for rain. Heaven, it turns out, had already left.'"},
   wild:[], enemies:[] },
@@ -382,7 +389,7 @@ const R=[
   enter:"In the valley, a great cube of black stone, draped and silent. A third of the living once turned toward it to pray. It still stands. Whatever it meant, it means it yet.",
   trees:[], build:[{t:"cube",x:150,y:110}], water:[{x:70,y:150}], dune:1, slab:{x:232,y:90,say:"'They came in their millions, and circled, and wept. The stone remembers being loved.'"},
   wild:[], enemies:[] },
- {b:"jungle",name:"INDIA · THE JUNGLE TEMPLE", exits:{n:19}, hot:1,
+ {b:"jungle",name:"INDIA · THE JUNGLE TEMPLE", exits:{n:19}, chest:{x:60,y:80,loot:["arrows","food"]}, hot:1,
   enter:"The green took India back in a single wet century. A temple tower drowns in vine, its gods still dancing under the moss. The air is thick and warm and watchful.",
   trees:seededTrees(6,210,BIOME.jungle,clearEdges), build:[{t:"shikhara",x:150,y:100}], water:[{x:70,y:140}], bush:[{x:220,y:90,ber:1,k:"mush"},{x:100,y:152,ber:1}], dweller:{x:232,y:120},
   fragment:{x:150,y:66,id:"zero",name:"THE NOTHING — the number zero, the courage to count what is not there"}, medicine:{x:64,y:110}, house:{x:255,y:152,theme:"rock"}, way:{x:150,y:150},
@@ -400,7 +407,7 @@ const R=[
   enter:"A drowned port on a red-gold sea. Rusted cranes lean like the necks of dead birds; a ship lies where the water abandoned it. But there is fresh water here — kneel and drink.",
   trees:[], build:[{t:"port",x:120,y:120},{t:"skyscraper",x:224,y:132}], water:[{x:66,y:130}], dweller:{x:180,y:100}, dune:1,
   wild:[{t:"raven",x:60,y:60}], enemies:[{t:"human",x:206,y:142}] },
- {b:"desert",name:"PETRA · THE ROSE CITY", exits:{s:23,n:25}, hot:1,
+ {b:"desert",name:"PETRA · THE ROSE CITY", exits:{s:23,n:25}, bush:[{x:130,y:150,ber:1,k:"olive"},{x:200,y:150,ber:1,k:"fig"}], hot:1,
   enter:"Cut straight into a cliff of rose-red rock: a temple facade taller than memory. A people carved a whole city from stone here, traded the known world through it, and then simply were not. A spring still runs.",
   trees:[], build:[{t:"petra",x:150,y:112},{t:"ruin",x:58,y:142}], water:[{x:240,y:150}], dweller:{x:100,y:120}, dune:1, house:{x:58,y:128,theme:"rock"}, way:{x:240,y:120},
   wild:[{t:"raven",x:224,y:60}], enemies:[{t:"human",x:206,y:100}] },
@@ -429,7 +436,7 @@ const R=[
   enter:"The great river empties into a grey, patient sea that has no far shore anymore. Reeds and birches, and still water clean enough to drink. The world simply ends here, in water. Rest — then go back when you are ready.",
   trees:seededTrees(5,411,BIOME.sea,(x,y)=>y>116||clearEdges(x,y)), water:[{x:150,y:150}], way:{x:70,y:104}, fires:[{x:252,y:76,lit:0}], bush:[{x:82,y:78,ber:1,k:"apple"}],
   wild:[{t:"raven",x:206,y:60},{t:"deer",x:120,y:96}], enemies:[] },
- {b:"winter",name:"SIBERIA · LAKE BAIKAL, THE EYE", exits:{s:7,n:31}, lake:1,
+ {b:"winter",name:"SIBERIA · LAKE BAIKAL, THE EYE", exits:{s:7,n:31}, lake:1, chest:{x:250,y:120,loot:["knife","arrows"]}, bush:[{x:90,y:110,ber:1,k:"pine"}],
   enter:"The oldest, deepest lake on earth — a mile of black water under a skin of ice, a fifth of the living world's fresh water held in one cold eye. It is so clear you can see your drowned reflection reaching up. Drink; it is clean.",
   trees:seededTrees(4,420,BIOME.winter,(x,y)=>y>108||clearEdges(x,y)), water:[{x:150,y:150}], way:{x:58,y:96}, fires:[{x:252,y:78,lit:0}],
   wild:[{t:"deer",x:90,y:70},{t:"raven",x:222,y:58}], enemies:[] },
@@ -446,7 +453,7 @@ const R=[
   enter:"Beyond the pass, impossibly: a green valley, warm, walled round by white peaks, a waterfall braiding down into a still blue lake. Deer graze unafraid, having never learned fear. A place the drowning and the burning both forgot. Rest here — you have earned it.",
   trees:seededTrees(7,421,BIOME.vale,(x,y)=>y>118||clearEdges(x,y)), water:[{x:60,y:118}], house:{x:238,y:120,theme:"rock"}, way:{x:150,y:152}, bush:[{x:96,y:78,ber:1,k:"apple"},{x:212,y:80,ber:1,k:"mush"}],
   wild:[{t:"deer",x:120,y:100},{t:"deer",x:172,y:110},{t:"raven",x:80,y:60}], enemies:[] },
- {b:"oasis",name:"ARABIA · THE HIDDEN OASIS", exits:{w:18,e:35},
+ {b:"oasis",name:"ARABIA · THE HIDDEN OASIS", exits:{w:18,e:35}, bush:[{x:110,y:130,ber:1,k:"date"},{x:200,y:140,ber:1,k:"date"}],
   enter:"After the sand-sea, a miracle: palms, shade, and a spring welling cold and sweet from nowhere. Doves rustle in the fronds. A caravan's ghost still circles the water. Drink, fill your skin, and breathe.",
   trees:[], build:[{t:"palm",x:78,y:112},{t:"palm",x:118,y:94},{t:"palm",x:214,y:120}], water:[{x:150,y:140}], house:{x:58,y:150,theme:"mud"}, way:{x:250,y:120}, dweller:{x:182,y:100},
   wild:[{t:"raven",x:92,y:58}], enemies:[] },
@@ -458,12 +465,12 @@ const R=[
   enter:"The road drops into a red gorge a river cut over a million years. A ribbon of white water still falls from the rim to feed a green thread along the canyon floor. Cliffs lean close overhead. Cool here, and wet, and watched.",
   trees:seededTrees(3,430,BIOME.desert,(x,y)=>y<96||clearEdges(x,y)), build:[{t:"ruin",x:58,y:132}], water:[{x:150,y:120}], way:{x:242,y:150}, bush:[{x:92,y:150,ber:1}],
   wild:[{t:"raven",x:204,y:58},{t:"deer",x:120,y:132}], enemies:[{t:"wolf",x:212,y:110}] },
- {b:"mtn",name:"THE URAL MOUNTAINS · THE LAST WALL", exits:{e:10,w:38},
+ {b:"mtn",name:"THE URAL MOUNTAINS · THE LAST WALL", exits:{e:10,w:38}, chest:{x:110,y:150,loot:["axe","arrows"]},
   enter:"The stone spine that divides Asia from all that lies west. Beyond it, the world you were born knowing simply ends. Snow, iron in the rock, and a wind that has travelled a very long way to meet you. This is the edge of everything you have walked.",
   trees:[], build:[{t:"peak",x:66,y:118},{t:"peak",x:238,y:120}], fires:[{x:150,y:150,lit:0}], way:{x:150,y:152},
   slab:{x:150,y:70,say:"'Here the thinkers were marched east in their millions — in chains, in winter, for the crime of a wrong idea. The mountains counted them, and told no one, and are counting still.'"},
   wild:[{t:"raven",x:200,y:58}], enemies:[{t:"wolf",x:190,y:120}] },
- {b:"steppe",name:"UKRAINE · THE BLACK EARTH", exits:{e:37,w:39},
+ {b:"steppe",name:"UKRAINE · THE BLACK EARTH", exits:{e:37,w:39}, chest:{x:240,y:150,loot:["arrows","knife","food"]},
   enter:"Down out of the mountains into soil so black and rich it should feed the whole world — and once it did. Wheat to the horizon, gone to seed and ghost. They starved a nation to death on this earth, on purpose, one winter, with the granaries full and guarded. The ground has not forgotten.",
   trees:seededTrees(3,440,BIOME.steppe,clearEdges), build:[{t:"ger",x:80,y:120}], water:[{x:70,y:150}], way:{x:150,y:152}, house:{x:58,y:150,theme:"mud"},
   slab:{x:240,y:80,say:"'The Holodomor, it would be named — the killing by hunger. Grain under guard in the silos, and children eating the thatch off their own roofs. The wheat still grew all around them. That was the cruelty of it.'"},
@@ -486,9 +493,21 @@ let ri=0;
 function toLocal(e){ const r=cv.getBoundingClientRect(); const cx=(e.touches?e.touches[0].clientX:e.clientX);
   const cy=(e.touches?e.touches[0].clientY:e.clientY); return {x:(cx-r.left)/r.width*W,y:(cy-r.top)/r.height*H}; }
 cv.addEventListener("pointerdown",e=>{ e.preventDefault(); actx(); const p=toLocal(e); click(p.x,p.y); });
-addEventListener("keydown",e=>{ if(e.key==="m"||e.key==="M"){muteBtn.click();return;} if(scene.mode==="boot"){startGame();return;}
+function setHeld(e,v){ const k=e.key;
+  if(k==="ArrowLeft"||k==="a"||k==="A")held.left=v;
+  else if(k==="ArrowRight"||k==="d"||k==="D")held.right=v;
+  else if(k==="ArrowUp"||k==="w"||k==="W")held.up=v;
+  else if(k==="ArrowDown"||k==="s"||k==="S")held.down=v;
+  else if(k==="Shift")held.shift=v;
+  else return false; if(v&&e.cancelable)e.preventDefault(); return true; }
+addEventListener("keydown",e=>{ if(setHeld(e,true))return;
+  if(e.key==="m"||e.key==="M"){muteBtn.click();return;} if(scene.mode==="boot"){startGame();return;}
   if(e.key==="b"||e.key==="B"){ if(scene.mode==="play"){ if(inv.pack){ packOpen=!packOpen; packSel=-1; } else caption("You have no pack yet — a dead traveller in the EAST carried one."); } return; }
+  if(e.key==="/"){ e.preventDefault(); jump(); return; }
   if(e.code==="Space"){e.preventDefault();attack();} });
+addEventListener("keyup",e=>{ setHeld(e,false); });
+addEventListener("blur",()=>{ held.left=held.right=held.up=held.down=held.shift=false; });
+function jump(){ if(scene.mode!=="play"||player.jumpT>0||player.stamina<=2)return; player.jumpT=0.42; player.inv=Math.max(player.inv,0.34); player.stamina=Math.max(0,player.stamina-3); if(!muted)sfxJump(); }
 function walkTo(x,y,cb){ player.tx=Math.max(5,Math.min(W-5,x)); player.ty=Math.max(46,Math.min(H-6,y)); player.arriveCb=cb||null; }
 
 function click(x,y){
@@ -519,7 +538,7 @@ function click(x,y){
   if(rm.axe && !rm.axe.got && Math.hypot(x-rm.axe.x,y-rm.axe.y)<16){ walkTo(rm.axe.x,rm.axe.y+10,()=>{rm.axe.got=1;belt.axe={name:"axe",dur:16,max:16,dmg:2,range:26};if(!weapon){weapon=belt.axe;eqKey="axe";}setInv();caption("An axe joins your belt. The knife stays. Tap the blade to switch.");}); return; }
   if(rm.blade && !rm.blade.got && Math.hypot(x-rm.blade.x,y-rm.blade.y)<16){ walkTo(rm.blade.x,rm.blade.y+10,()=>{rm.blade.got=1;belt.blade={name:"long blade",dur:28,max:28,dmg:2,range:30};if(!weapon){weapon=belt.blade;eqKey="blade";}setInv();caption("A long blade of old-world steel — longer reach, and it does not tire quickly.");}); return; }
   if(rm.bow && !rm.bow.got && Math.hypot(x-rm.bow.x,y-rm.bow.y)<16){ walkTo(rm.bow.x,rm.bow.y+10,()=>{rm.bow.got=1;inv.bow=true;inv.arrows+=12;setInv();caption("A bow, and a quiver. Tap a distant foe to loose an arrow.");}); return; }
-  if(rm.bush) for(const bs of rm.bush){ if(bs.ber && Math.hypot(x-bs.x,y-bs.y)<16){ walkTo(bs.x,bs.y+10,()=>{bs.ber=0;inv.food++;setInv();caption(bs.k==="apple"?"Frozen apples, hard as stone but sweet.":bs.k==="mush"?"Pale mushrooms. Probably fine.":"Bitter berries. Saved for a hungrier hour.");}); return; } }
+  if(rm.bush) for(const bs of rm.bush){ if(bs.ber && Math.hypot(x-bs.x,y-bs.y)<16){ walkTo(bs.x,bs.y+10,()=>{bs.ber=0;inv.food++;setInv();caption(FORAGE[bs.k]||FORAGE._);}); return; } }
   if(rm.slab && Math.hypot(x-rm.slab.x,y-rm.slab.y)<18){ walkTo(rm.slab.x,rm.slab.y+12,()=>caption(readText(rm.slab.say))); return; }
   if(rm.fragment && !rm.fragment.got && Math.hypot(x-rm.fragment.x,y-rm.fragment.y)<20){ walkTo(rm.fragment.x,rm.fragment.y+12,()=>takeFragment(rm.fragment)); return; }
   if(rm.medicine && !rm.medicine.got && Math.hypot(x-rm.medicine.x,y-rm.medicine.y)<18){ walkTo(rm.medicine.x,rm.medicine.y+10,()=>{ rm.medicine.got=1; inv.medicine=true; setInv(); caption("An overgrown apothecary — jars, dried leaf, a healer's careful hand long stilled. You learn the green art. Now sleep can mend wounds, not only weariness.",{voice:knowledge}); }); return; }
@@ -568,7 +587,7 @@ function lightCandle(){ sfxLight(); inv.candle=true; inv.candleLit=true; belt.kn
 
 // ---------- rooms ----------
 function gotoRoom(i,from){ ri=i; const rm=R[i]; scene={mode:"play"}; placeEl.textContent=rm.name;
-  hintEl.textContent="tap to walk · walk to an edge to travel · tap foes to fight";
+  hintEl.textContent="arrows/WASD or tap to walk · SHIFT run · / hop · edge to travel · tap foes";
   if(from==="s"){player.x=W/2;player.y=56;} else if(from==="n"){player.x=W/2;player.y=H-24;}
   else if(from==="e"){player.x=14;player.y=H/2;} else if(from==="w"){player.x=W-14;player.y=H/2;} else {player.x=W-14;player.y=H/2;}
   player.tx=player.x;player.ty=player.y;player.dir="left";player.arriveCb=null;player.entryGrace=0.5;
@@ -628,7 +647,7 @@ function sleepNow(){ if(scene.mode!=="house")return; doFade(()=>{
   else { if(player.hp<player.maxHp)player.hp=Math.min(player.maxHp,player.hp+1); sfxChime(); caption("You sleep. Your weariness lifts and the cold leaves your bones — but a deeper wound needs more than rest. (Learn medicine in the green south, in India.)"); }
   }); }
 function leaveHouse(){ doFade(()=>{ const h=R[ri].house; scene={mode:"play"}; placeEl.textContent=R[ri].name;
-  hintEl.textContent="tap to walk · walk to an edge to travel · tap foes to fight";
+  hintEl.textContent="arrows/WASD or tap to walk · SHIFT run · / hop · edge to travel · tap foes";
   player.x=h.x;player.y=h.y+18;player.tx=player.x;player.ty=player.y;player.dir="down";player.entryGrace=0.6;player.arriveCb=null; if(!muted)windStart(); }); }
 
 // ---------- chests & the dead (loot) ----------
@@ -636,6 +655,7 @@ function openChest(c){ if(c.got)return; c.got=1; sfxChime(); const got=[];
   for(const it of (c.loot||[])){
     if(it==="arrows"){ inv.arrows+=8; got.push("arrows ×8"); }
     else if(it==="knife"){ belt.knife={name:"knife",dur:10,max:10,dmg:1,range:24}; if(!weapon)autoEquip(); got.push("a fresh knife"); }
+    else if(it==="axe"){ belt.axe={name:"axe",dur:16,max:16,dmg:2,range:26}; if(!weapon)autoEquip(); got.push("an axe"); }
     else if(it==="blade"){ belt.blade={name:"long blade",dur:28,max:28,dmg:2,range:30}; if(!weapon)autoEquip(); got.push("a long blade"); }
     else if(it==="food"){ inv.food+=2; got.push("food ×2"); }
     else if(it==="wraps"){ inv.wraps=true; got.push("desert wraps — light, pale, made for the heat"); }
@@ -660,20 +680,30 @@ function moveToward(dt){ const dx=player.tx-player.x,dy=player.ty-player.y,d=Mat
     player.dir=Math.abs(dx)>Math.abs(dy)?(dx<0?"left":"right"):(dy<0?"up":"down");
     player.stepT+=dt; if(player.stepT>0.28){player.stepT=0;player.phase^=1;sfxStep();}
   } else { player.moving=false; if(player.arriveCb){const cb=player.arriveCb;player.arriveCb=null;cb();} } }
+function moveByKeys(kx,ky,dt){ const run=held.shift?1.7:1, cold=player.warmth<25?0.7:1, tired=player.stamina<20?0.78:1;
+  const len=Math.hypot(kx,ky)||1, sp=54*cold*tired*run*dt;
+  let nx=player.x+kx/len*sp, ny=player.y+ky/len*sp, ok=true;
+  for(const t of R[ri].trees){ if(Math.hypot(nx-t.x,ny-(t.y+4))<7){ok=false;break;} }
+  if(ok){ player.x=Math.max(5,Math.min(W-5,nx)); player.y=Math.max(46,Math.min(H-6,ny)); }
+  player.tx=player.x; player.ty=player.y; player.arriveCb=null; player.moving=true;
+  player.dir=Math.abs(kx)>Math.abs(ky)?(kx<0?"left":"right"):(ky<0?"up":"down");
+  if(held.shift)player.stamina=Math.max(0,player.stamina-0.2*dt);
+  player.stepT+=dt; if(player.stepT>(run>1?0.16:0.26)){player.stepT=0;player.phase^=1;if(!muted)sfxStep();} }
 
 function update(dt){
   T+=dt; dayClock+=dt; flick=0.86+Math.sin(T*11)*0.06+Math.random()*0.04; if(flashT>0)flashT-=dt;
-  updateCap(dt); player.atkCd=Math.max(0,player.atkCd-dt); player.attackT=Math.max(0,player.attackT-dt); player.inv=Math.max(0,player.inv-dt);
+  updateCap(dt); player.atkCd=Math.max(0,player.atkCd-dt); player.attackT=Math.max(0,player.attackT-dt); player.inv=Math.max(0,player.inv-dt); player.jumpT=Math.max(0,player.jumpT-dt);
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.life<=0)parts.splice(i,1);}
   if(fadeDir!==0){ fade+=fadeDir*dt*1.7; if(fade>=1){fade=1;if(fadeCb){const c=fadeCb;fadeCb=null;c();}fadeDir=-1;} else if(fade<=0){fade=0;fadeDir=0;} }
 
   if(scene.mode==="san"){ if(!inv.candleLit){ heartbeat._t=(heartbeat._t||0)+dt; if(heartbeat._t>1.1){heartbeat._t=0;heartbeat();} } if(scene.step===3)moveToward(dt); if(inv.candleLit)candleR=Math.min(70,candleR+90*dt); return; }
   if(scene.mode==="end"){ candleR=Math.min(60,candleR+40*dt); return; }
-  if(scene.mode==="house"){ moveToward(dt); player.stamina=Math.min(100,player.stamina+12*dt); return; }
+  if(scene.mode==="house"){ const kx=(held.right?1:0)-(held.left?1:0), ky=(held.down?1:0)-(held.up?1:0); if(kx||ky) moveByKeys(kx,ky,dt); else moveToward(dt); player.stamina=Math.min(100,player.stamina+12*dt); return; }
   if(scene.mode!=="play") return;
 
   const rm=R[ri], B=BIOME[rm.b];
-  moveToward(dt); candleR=Math.min(58,candleR+120*dt);
+  { const kx=(held.right?1:0)-(held.left?1:0), ky=(held.down?1:0)-(held.up?1:0); if(kx||ky) moveByKeys(kx,ky,dt); else moveToward(dt); }
+  candleR=Math.min(58,candleR+120*dt);
   // walk to any edge that has a way, and be carried through
   if(player.entryGrace>0) player.entryGrace-=dt;
   else if(capDone()){ const ex=rm.exits;   // only the marked opening (mid-edge) is a way through
@@ -734,7 +764,7 @@ function update(dt){
 function die(msg){ if(player._dead)return; player._dead=true; caption(msg,{cb:()=>{ setTimeout(()=>{ player._dead=false;
   player.hp=player.maxHp; player.warmth=72; player.hunger=Math.max(player.hunger,45); player.thirst=Math.max(player.thirst,60); player.water=Math.max(player.water,60); player.stamina=Math.max(player.stamina,65); player.inv=1.5;
   const cp=checkpoint; const bound=cp.ri!==ri; ri=cp.ri; const rm=R[ri]; scene={mode:"play"}; placeEl.textContent=rm.name;
-  hintEl.textContent="tap to walk · walk to an edge to travel · tap foes to fight";
+  hintEl.textContent="arrows/WASD or tap to walk · SHIFT run · / hop · edge to travel · tap foes";
   player.x=cp.x;player.y=cp.y;player.tx=cp.x;player.ty=cp.y;player.dir="down";player.entryGrace=0.6;player.arriveCb=null;
   enemies=(rm.enemies||[]).filter(e=>!(rm.guard&&e.t==="ranger"&&gateOpen)).map(mkEnemy);
   wildlife=(rm.wild||[]).map(w=>({t:w.t,x:w.x,y:w.y,ph:Math.random()*6,vx:0,vy:0,flee:0})); arrows=[]; parts=[]; motes=[]; roomCalm=1.8;
@@ -891,7 +921,9 @@ function drawScene(){ const rm=R[ri], B=BIOME[rm.b]; drawGround(B,rm);
   if(rm.build) for(const b of rm.build) ents.push({y:b.y,d:()=>drawBuild(b.t,b.x,b.y)});
   for(const w of wildlife){ ents.push({y:w.y,d:()=>{ const dir=player.x<w.x?"left":"right"; if(w.t==="deer")sprDeer(w.x,w.y,dir); else if(w.t==="raven")sprRaven(w.x,w.y); else if(w.t==="horse")sprHorse(w.x,w.y,dir); else sprDeer(w.x,w.y,dir); }}); }
   for(const en of enemies){ if(en.dead)continue; ents.push({y:en.y,d:()=>{ if(en.hurt>0)g.globalAlpha=0.6; if(en.t==="wolf")sprWolf(en.x,en.y,en.dir,(en.phase|0)%2); else if(en.t==="human")sprHuman(en.x,en.y,en.dir,(en.phase|0)%2); else if(en.t==="bear")sprBear(en.x,en.y,en.dir,(en.phase|0)%2); else sprRanger(en.x,en.y,en.phase); g.globalAlpha=1; }}); }
-  const blink=player.inv>0&&((T*12)|0)%2; if(!blink) ents.push({y:player.y,d:()=>sprPlayer(player.x,player.y,player.dir,player.phase,worn==="coat")});
+  const blink=player.inv>0&&((T*12)|0)%2; const jl=player.jumpT>0?Math.sin((1-player.jumpT/0.42)*Math.PI)*9:0;
+  if(jl>0){ g.save(); g.globalAlpha=0.4; g.fillStyle=C.shadow; g.beginPath(); g.ellipse(player.x,player.y+7,6,2,0,0,6.28); g.fill(); g.restore(); }
+  if(!blink) ents.push({y:player.y,d:()=>sprPlayer(player.x,player.y-jl,player.dir,player.phase,worn==="coat")});
   ents.sort((a,b)=>a.y-b.y); for(const e of ents)e.d();
   if(rm.fragment&&!rm.fragment.got) sprFragment(rm.fragment.x,rm.fragment.y);
   for(const a of arrows){ px(a.x-1,a.y-1,3,2,"#d8cdb0"); }
