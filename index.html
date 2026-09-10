@@ -82,7 +82,7 @@
 (function(){
 "use strict";
 const cv=document.getElementById("game"), g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
-const W=320,H=200, BUILD="v29 · leave any time";
+const W=320,H=200, BUILD="v30 · finishable — treasure map & gentler world";
 const capEl=document.getElementById("cap"), hintEl=document.getElementById("hint"),
       placeEl=document.getElementById("place"), durEl=document.getElementById("dur"),
       breadnEl=document.getElementById("breadn"), arrnEl=document.getElementById("arrn");
@@ -717,26 +717,27 @@ function update(dt){
   if(B.cold<0){ player.warmth=Math.min(100,player.warmth+ -B.cold*dt); }               // cave warms you
   else if(nearFire){ player.warmth=Math.min(100,player.warmth+16*dt); }                 // fire warms
   else if(sun>0.6 && rm.b!=="cave"){ player.warmth=Math.min(100,player.warmth+(sun-0.55)*7*dt); } // midday sun warms
-  else { player.warmth-=B.cold*gear*(1-sun*0.5)*dt; }                                    // cold, softened by gear + daylight
-  player.hunger-=0.55*dt;
+  else { player.warmth-=B.cold*gear*(1-sun*0.5)*0.62*dt; }                               // cold, softened by gear + daylight (gentler)
+  player.hunger-=0.32*dt;
   // stamina — drains very slowly; sleep in a house to restore
-  player.stamina=Math.max(0,player.stamina-0.11*dt);
-  if(player.stamina<=0){ player.hp-=dt*0.14; if(Math.random()<dt*0.5&&capDone()) caption("You are exhausted past bearing. Find a house and sleep, or you will simply lie down here."); }
+  player.stamina=Math.max(0,player.stamina-0.06*dt);
+  if(player.stamina<=0){ player.hp-=dt*0.07; if(Math.random()<dt*0.5&&capDone()) caption("You are exhausted past bearing. Find a house and sleep, or you will simply lie down here."); }
   else if(player.stamina<20 && Math.random()<dt*0.25 && capDone()) caption("Your legs drag. You need to sleep soon — look for a house.");
   // heat & thirst (deserts, jungle) — the coat COOKS you in the heat; wraps are made for it
-  if(B.hot){ const heatGear = worn==="wraps"?0.6 : (worn==="coat"?1.5:1); player.thirst-=B.hot*(0.6+sun*0.8)*heatGear*dt;
+  if(B.hot){ const heatGear = worn==="wraps"?0.5 : (worn==="coat"?1.4:0.85); player.thirst-=B.hot*(0.5+sun*0.6)*heatGear*dt;
     if(worn==="coat" && Math.random()<dt*0.12 && capDone()) caption(inv.wraps?"The coat is an oven out here — open your pack (B) and put on your desert wraps.":"The coat is an oven out here. You need lighter clothes — desert wraps, off some poor soul who knew better.");
-    if(player.thirst<=0){ player.thirst=0; player.hp-=dt*0.4; if(Math.random()<dt) caption("Your throat is sand. You need water — a well, an oasis, a river."); } }
-  else { player.thirst=Math.min(100,player.thirst+4*dt); }  // recover thirst in cooler lands
+    if(player.thirst<=0){ player.thirst=0; player.hp-=dt*0.25; if(Math.random()<dt) caption("Your throat is sand. You need water — a well, an oasis, a river."); } }
+  else { player.thirst=Math.min(100,player.thirst+5*dt); }  // recover thirst in cooler lands
   if(player.thirst<=0 && player.hp<=0) die("The desert took the last of your water, and then the rest of you.");
   { const dnow=sun>0.5; if(player._wasDay===undefined)player._wasDay=dnow; else if(dnow!==player._wasDay&&capDone()) caption(dnow?"Dawn. The sun climbs over the dead world — and the dark pulls back.":"Night falls. The cold leans in, and the candle is all you have."); player._wasDay=dnow; }
-  if(player.hunger<=0){ player.hunger=0; player.hp-=dt*0.4; }
+  if(player.hunger<=0){ player.hunger=0; player.hp-=dt*0.22; }
   if(player.warmth<=0){ player.warmth=0; die("The cold has you. You stop shivering — that is the dangerous part."); }
 
-  // gate nudge: after gate, if you wander a non-northern room, the terminal gets impatient
-  if(gateOpen && ri!==9 && ri!==10){ gateHint+=dt; if(gateHint>14){ gateHint=0; if(capDone()) nudgeNorth(); } } else gateHint=0;
+  // gate nudge: after the wind rises, if you wander away from the western corridor, the terminal gets impatient
+  const inCorridor = ri===10||ri===37||ri===38||ri===39||ri===40;
+  if(gateOpen && !knowledge && !inCorridor){ gateHint+=dt; if(gateHint>18){ gateHint=0; if(capDone()) nudgeNorth(); } } else gateHint=0;
   if(rm.evil){ evilT+=dt; if(evilT>8){ evilT=0; if(capDone()){ caption(EVILWIND[Math.floor(Math.random()*EVILWIND.length)]); if(!muted)sfxEvil(); } } }
-  if(rm.rad){ player.hp-=dt*0.05; if(Math.random()<dt*0.28 && capDone()) caption("A taste of hot metal, a ticking behind your teeth. The air itself is poisoned here. Keep moving — get out of the Dead Zone."); if(player.hp<=0) die("The invisible fire of the old reactor unmakes you, quietly, cell by cell. You should not have lingered in Pripyat."); }
+  if(rm.rad){ player.hp-=dt*0.028; if(Math.random()<dt*0.28 && capDone()) caption("A taste of hot metal, a ticking behind your teeth. The air itself is poisoned here. Keep moving — cross it, and you will be fine."); if(player.hp<=0) die("The invisible fire of the old reactor unmakes you, quietly, cell by cell. You should not have lingered in Pripyat."); }
 
   // enemies
   if(roomCalm>0)roomCalm-=dt;
@@ -974,19 +975,23 @@ function drawMap(){ // THE RECORD — a drawn chart of drowned Asia
   // inked roads between places you have walked
   g.strokeStyle="#3a2e18"; g.lineWidth=1;
   for(let i=0;i<R.length;i++){ if(!visited.has(i))continue; const ex=R[i].exits; for(const d in ex){ const j=ex[d]; if(j==null||!visited.has(j))continue; const a=MAPXY[i],b=MAPXY[j]; g.beginPath(); g.moveTo(a[0],a[1]); g.lineTo(b[0],b[1]); g.stroke(); } }
-  // waypoints (round, not boxes) + quest glyphs
+  // fragment stars — shown for ALL uncollected fragments (visited or not): a treasure map
+  for(let i=0;i<R.length;i++){ if(!(FRAGROOM[i] && !frags.has(FRAGROOM[i])))continue; const p=MAPXY[i];
+    g.save(); g.globalAlpha=0.55+Math.sin(T*4)*0.4; g.fillStyle=C.gold; g.font="11px 'Courier New',monospace"; g.textAlign="center"; g.textBaseline="middle"; g.fillText("✶",p[0],p[1]-7); g.textBaseline="alphabetic"; g.restore(); }
+  // waypoints (round, not boxes) for places you've walked
   for(let i=0;i<R.length;i++){ if(!visited.has(i))continue; const p=MAPXY[i];
-    if(FRAGROOM[i] && !frags.has(FRAGROOM[i])){ g.save(); g.globalAlpha=0.55+Math.sin(T*4)*0.4; g.fillStyle=C.gold; g.font="10px 'Courier New',monospace"; g.textAlign="center"; g.textBaseline="middle"; g.fillText("✶",p[0],p[1]-7); g.textBaseline="alphabetic"; g.restore(); }
     g.fillStyle="#1a140a"; g.beginPath(); g.arc(p[0],p[1],3,0,6.28); g.fill();
     g.fillStyle=(i===ri)?C.gold:C.phos; g.beginPath(); g.arc(p[0],p[1],2,0,6.28); g.fill();
     if(i===ri){ g.strokeStyle=C.gold; g.lineWidth=1; const r=4.5+Math.sin(T*4)*1.5; g.beginPath(); g.arc(p[0],p[1],r,0,6.28); g.stroke(); }
   }
+  // once all seven are gathered, the goal-marker points to the Carpathians (room 40)
+  if(gateOpen && !knowledge){ const p=MAPXY[40]; g.save(); g.globalAlpha=0.6+Math.sin(T*4)*0.4; g.fillStyle="#7fe0c8"; g.font="12px 'Courier New',monospace"; g.textAlign="center"; g.textBaseline="middle"; g.fillText("✦",p[0],p[1]-7); g.textBaseline="alphabetic"; g.restore(); }
   // title & footer
   g.textAlign="center"; g.textBaseline="alphabetic";
   g.fillStyle="#0a1320"; g.fillRect(0,0,W,15); g.fillRect(0,H-24,W,24);
-  g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("THE RECORD — what the sea gave back of Asia",W/2,11);
+  g.fillStyle=C.gold; g.font="8px 'Courier New',monospace"; g.fillText("THE RECORD — what the sea gave back",W/2,11);
   g.fillStyle=C.phos; g.font="7px 'Courier New',monospace"; g.fillText("you are here: "+R[ri].name,W/2,H-15);
-  g.fillStyle="#c9a24a"; g.fillText("✶ = a quest waits   ·   knowledge "+frags.size+"/"+FRAG_TOTAL+"   ·   tap to close",W/2,H-5);
+  g.fillStyle="#c9a24a"; g.fillText(gateOpen?"✦ go WEST to the Carpathians — KNOWLEDGE waits   ·   tap to close":"✶ = a fragment waits here   ·   knowledge "+frags.size+"/"+FRAG_TOTAL+"   ·   tap to close",W/2,H-5);
   g.textAlign="left"; }
 function drawAlerts(){ for(const en of enemies){ if(en.dead||!en.aggroOn)continue; const x=en.x,y=en.y-(en.t==="bear"?22:18),by=Math.sin(T*9)*1.5; g.save(); g.globalCompositeOperation="lighter"; const gr=g.createRadialGradient(x,y+by,0,x,y+by,11); gr.addColorStop(0,"rgba(255,207,92,.85)"); gr.addColorStop(1,"rgba(255,207,92,0)"); g.fillStyle=gr; g.fillRect(x-11,y-11+by,22,22); g.restore(); g.fillStyle=C.gold; g.fillRect(x-1,y-7+by,2,7); g.fillRect(x-1,y+2+by,2,2); } }
 function applyDark(a){ dg.clearRect(0,0,W,H); dg.fillStyle="rgba(4,6,14,"+a+")"; dg.fillRect(0,0,W,H); dg.globalCompositeOperation="destination-out";
